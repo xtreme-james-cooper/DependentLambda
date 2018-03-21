@@ -49,9 +49,4 @@ indexSubr b (FS x) (IxS (S n) (insertAt x b env) a y ix) neq {env = (y :: env)} 
     IxS n env a y (indexSubr b x ix (npf neq))
         where npf : (neq : Not (FS i = FS j)) -> Not (i = j)
               npf neq Refl = neq Refl
-
-export
-indexInsertAt : (x : Fin (S n)) -> (a : t) -> (env : Vect n t) -> index x (insertAt x a env) = a
-indexInsertAt FZ a env = Refl
-indexInsertAt (FS x) a [] impossible
-indexInsertAt (FS x) a (y :: env) = indexInsertAt x a env
+              
