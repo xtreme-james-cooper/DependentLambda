@@ -20,6 +20,8 @@ mutual
     App : Expr env (ArrowTy t1 t2) -> Expr env t1 -> Expr env t2
     Abs : (t1 : Ty) -> Expr (t1 :: env) t2 -> Expr env (ArrowTy t1 t2)
     Let : Expr env t1 -> Expr (t1 :: env) t2 -> Expr env t2
+    Letrec : {n : Nat} -> (ts : Vect n Ty) -> Exprs (ts ++ env) ts ->
+        Expr (ts ++ env) t -> Expr env t
     Constr : {ctrs : Vect m (n ** Vect n Ty)} -> (tag : Fin m) ->
         Exprs env (snd (index tag ctrs)) -> Expr env (DataTy ctrs)
     Case : Expr env (DataTy ctrs) -> Alts env ctrs t -> Expr env t
@@ -42,6 +44,12 @@ mutual
   incr x tt (App e1 e2) = App (incr x tt e1) (incr x tt e2)
   incr x tt (Abs t1 e) = Abs t1 (incr (FS x) tt e)
   incr x tt (Let e1 e2) = Let (incr x tt e1) (incr (FS x) tt e2)
+  incr x tt (Letrec {n = n} {t = t} ts es e) {env = env} = ?dontCommit
+      --let es' : Exprs (ts ++ insertAt x tt env) ts =
+      --      rewrite appendInsert ts env x tt in incrs (extendFin n x) tt es
+      --    e' : Expr (ts ++ insertAt x tt env) t =
+      --      rewrite appendInsert ts env x tt in incr (extendFin n x) tt e
+      --in Letrec ts es' e'
   incr x tt (Constr tag es) = Constr tag (incrs x tt es)
   incr x tt (Case e as) = Case (incr x tt e) (incra x tt as)
 
@@ -52,10 +60,10 @@ mutual
   export
   incra : (x : Fin (S n)) -> (tt : Ty) -> Alts env ctrs ts -> Alts (insertAt x tt env) ctrs ts
   incra x tt Fail = Fail
-  incra {env = env} {ctrs = (p ** xs) :: ctrs} x tt (Alt e as) =
-      let e' : Expr (xs ++ insertAt x tt env) ts =
-          rewrite appendInsert xs env x tt in incr (extendFin p x) tt e
-      in Alt e' (incra x tt as)
+  incra {env = env} {ctrs = (p ** xs) :: ctrs} x tt (Alt e as) = ?dontCommit3
+      --let e' : Expr (xs ++ insertAt x tt env) ts =
+      --    rewrite appendInsert xs env x tt in incr (extendFin p x) tt e
+      --in Alt e' (incra x tt as)
 
 export
 multiincr : Expr env t -> Expr (ts ++ env) t
@@ -74,6 +82,13 @@ mutual
   subst x e' (App e1 e2) = App (subst x e' e1) (subst x e' e2)
   subst x e' (Abs t1 e) = Abs t1 (subst (FS x) (incr FZ t1 e') e)
   subst x e' (Let e1 e2) = Let (subst x e' e1) (subst (FS x) (incr FZ _ e') e2)
+  subst x e' (Letrec {n = n} {t = t} ts es e) {env = env} {t' = t'} = ?dontCommit2
+      --let es' : Exprs (insertAt (extendFin n x) t' (ts ++ env)) ts =
+      --      rewrite sym (appendInsert ts env x t') in es
+      --    e1' : Expr (insertAt (extendFin n x) t' (ts ++ env)) t =
+      --      rewrite sym (appendInsert ts env x t') in e
+      --in Letrec ts (substs (extendFin n x) (multiincr e') es')
+      --             (subst (extendFin n x) (multiincr e') e1')
   subst x e' (Constr tag es) = Constr tag (substs x e' es)
   subst x e' (Case e as) = Case (subst x e' e) (substa x e' as)
 
@@ -83,10 +98,10 @@ mutual
 
   substa : (x : Fin (S n)) -> Expr env t' -> Alts (insertAt x t' env) ctrs ts -> Alts env ctrs ts
   substa x e' Fail = Fail
-  substa {t' = t'} {env = env} {ctrs = (p ** xs) :: ctrs} x e' (Alt e as) =
-      let ep : Expr (insertAt (extendFin p x) t' (xs ++ env)) ts =
-        rewrite sym (appendInsert xs env x t') in e
-      in Alt (subst (extendFin p x) (multiincr e') ep) (substa x e' as)
+  substa {t' = t'} {env = env} {ctrs = (p ** xs) :: ctrs} x e' (Alt e as) = ?dontCommit4
+      --let ep : Expr (insertAt (extendFin p x) t' (xs ++ env)) ts =
+      --    rewrite sym (appendInsert xs env x t') in e
+      --in Alt (subst (extendFin p x) (multiincr e') ep) (substa x e' as)
 
 export
 multisubst : Exprs env ts -> Expr (ts ++ env) t -> Expr env t
