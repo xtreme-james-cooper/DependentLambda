@@ -10,7 +10,7 @@ indexInsertAt FZ a env = Refl
 indexInsertAt (FS x) a [] impossible
 indexInsertAt (FS x) a (y :: env) = indexInsertAt x a env
 
-public export
+export
 extendFin : (m : Nat) -> Fin (S n) -> Fin (S (m + n))
 extendFin Z x = x
 extendFin (S m) x = FS (extendFin m x)

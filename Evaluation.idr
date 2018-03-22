@@ -4,6 +4,7 @@ import Data.Vect
 import Lambda
 import Index
 import VectHelper
+import Iterate
 
 %default total
 
@@ -101,7 +102,8 @@ progress e with (progress' e)
   progress e | VarHeaded ix vh impossible
 
 partial
-evaluate : Expr [] t -> (e' : Expr [] t ** IsValue e')
+evaluate : (e : Expr [] t) -> (e' : Expr [] t ** (Iterate Eval e e', IsValue e'))
 evaluate e with (progress e)
-  evaluate e | Left v = (e ** v)
-  evaluate e | Right (e' ** ev) = evaluate e'
+  evaluate e | Left v = (e ** (IterRefl, v))
+  evaluate e | Right (e' ** ev) with (evaluate e')
+    evaluate e | Right (e' ** ev) | (e'' ** (evs, v)) = (e'' ** (IterStep ev evs, v))
