@@ -31,16 +31,17 @@ finFromIndex (IxZ a as) = FZ
 finFromIndex (IxS c ix) = FS (finFromIndex ix)
 
 export
-indexSplit : (as : Vect n t) -> (ix : Index (as ++ bs) a) ->
-    Either (ix' : Index as a ** ix = indexRightExtend bs ix')
-           (ix' : Index bs a ** ix = indexLeftExtend as ix')
-indexSplit [] ix = Right (ix ** Refl)
-indexSplit (a :: as) (IxZ a (as ++ bs)) = Left (IxZ a as ** Refl)
-indexSplit (a' :: as) (IxS a' ix) with (indexSplit as ix)
-  indexSplit (a' :: as) (IxS a' (indexRightExtend bs ix')) | Left (ix' ** Refl) =
-      Left (IxS a' ix' ** ?other)
-  indexSplit (a' :: as) (IxS a' (indexLeftExtend as ix')) | Right (ix' ** Refl) =
-      Right (ix' ** Refl)
+sameIndex : {as : Vect n a'} -> {bs : Vect n b'} -> (ix1 : Index as a) -> (ix2 : Index bs b) -> Type
+sameIndex ix1 ix2 = finFromIndex ix1 = finFromIndex ix2
+
+export
+compareIndex : (ix1 : Index as a) -> (ix2 : Index bs b) -> Dec (sameIndex ix1 ix2)
+compareIndex (IxZ a as) (IxZ b bs) = Yes Refl
+compareIndex (IxZ a as) (IxS b ix2) = No (\Refl impossible)
+compareIndex (IxS a ix1) (IxZ b bs) = No (\Refl impossible)
+compareIndex (IxS a ix1) (IxS b ix2) = case compareIndex ix1 ix2 of
+    Yes pf => Yes (rewrite pf in Refl)
+    No npf => No (\pf => npf (rewrite FSinjective pf in Refl))
 
 export
 compareFinToIndex : (x : Fin n) -> (ix : Index env a) -> Dec (finFromIndex ix = x)
@@ -50,6 +51,18 @@ compareFinToIndex (FS x) (IxZ a as) = No (\Refl impossible)
 compareFinToIndex (FS x) (IxS c ix) = case compareFinToIndex x ix of
     Yes Refl => Yes Refl
     No npf => No (\Refl => npf Refl)
+
+export
+indexSplit : (as : Vect n t) -> (ix : Index (as ++ bs) a) ->
+    Either (ix' : Index as a ** ix = indexRightExtend bs ix')
+           (ix' : Index bs a ** ix = indexLeftExtend as ix')
+indexSplit [] ix = Right (ix ** Refl)
+indexSplit (a :: as) (IxZ a (as ++ bs)) = Left (IxZ a as ** Refl)
+indexSplit (a' :: as) (IxS a' ix) with (indexSplit as ix)
+  indexSplit (a' :: as) (IxS a' (indexRightExtend bs ix')) | Left (ix' ** Refl) =
+      Left (IxS a' ix' ** Refl)
+  indexSplit (a' :: as) (IxS a' (indexLeftExtend as ix')) | Right (ix' ** Refl) =
+      Right (ix' ** Refl)
 
 export
 indexOfIndex : (x : Fin n) -> (ix : Index env a) -> finFromIndex ix = x -> index x env = a
