@@ -20,8 +20,7 @@ mutual
     App : Expr env (ArrowTy t1 t2) -> Expr env t1 -> Expr env t2
     Abs : (t1 : Ty) -> Expr (t1 :: env) t2 -> Expr env (ArrowTy t1 t2)
     Let : Expr env t1 -> Expr (t1 :: env) t2 -> Expr env t2
-    Letrec : {n : Nat} -> (ts : Vect n Ty) -> Exprs (ts ++ env) ts ->
-        Expr (ts ++ env) t -> Expr env t
+    Fix : Expr env (ArrowTy t t) -> Expr env t
     Constr : {ctrs : Vect m (n ** Vect n Ty)} -> (tag : Fin m) ->
         Exprs env (snd (index tag ctrs)) -> Expr env (DataTy ctrs)
     Case : Expr env (DataTy ctrs) -> Alts env ctrs t -> Expr env t
@@ -44,12 +43,7 @@ mutual
   incr x tt (App e1 e2) = App (incr x tt e1) (incr x tt e2)
   incr x tt (Abs t1 e) = Abs t1 (incr (FS x) tt e)
   incr x tt (Let e1 e2) = Let (incr x tt e1) (incr (FS x) tt e2)
-  incr x tt (Letrec {n = n} {t = t} ts es e) {env = env} =
-      let es' : Exprs (ts ++ insertAt x tt env) ts =
-            rewrite appendInsert ts env x tt in incrs (extendFin n x) tt es
-      in let e' : Expr (ts ++ insertAt x tt env) t =
-            rewrite appendInsert ts env x tt in incr (extendFin n x) tt e
-      in Letrec ts es' e'
+  incr x tt (Fix e) = Fix (incr x tt e)
   incr x tt (Constr tag es) = Constr tag (incrs x tt es)
   incr x tt (Case e as) = Case (incr x tt e) (incra x tt as)
 
@@ -87,17 +81,7 @@ mutual
   subst x e' (App e1 e2) = App (subst x e' e1) (subst x e' e2)
   subst x e' (Abs t1 e) = Abs t1 (subst (FS x) (incr FZ t1 e') e)
   subst x e' (Let e1 e2) = Let (subst x e' e1) (subst (FS x) (incr FZ _ e') e2)
-  subst x e' (Letrec {n = n} {t = t} ts es e) {env = env} {t' = t'} =
-      let es' : Exprs (insertAt (extendFin n x) t' (ts ++ env)) ts =
-            rewrite sym (appendInsert ts env x t') in es
-      in let small_es' : Exprs (insertAt (extendFin n x) t' (ts ++ env)) ts =
-            assert_smaller (Letrec ts es e) es'
-      in let e1' : Expr (insertAt (extendFin n x) t' (ts ++ env)) t =
-            rewrite sym (appendInsert ts env x t') in e
-      in let small_e1' : Expr (insertAt (extendFin n x) t' (ts ++ env)) t =
-            assert_smaller (Letrec ts es e) e1'
-      in Letrec ts (substs (extendFin n x) (multiincr e') small_es')
-                   (subst (extendFin n x) (multiincr e') small_e1')
+  subst x e' (Fix e) = Fix (subst x e' e)
   subst x e' (Constr tag es) = Constr tag (substs x e' es)
   subst x e' (Case e as) = Case (subst x e' e) (substa x e' as)
 
