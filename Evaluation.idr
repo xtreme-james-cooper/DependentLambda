@@ -35,7 +35,7 @@ mutual
     EvAppLetrec : IsValue e1 -> Eval (App (Letrec ts es e1) e2) (Letrec ts es (App e1 (multiincr e2)))
     EvLet1 : Eval e2 e2' -> Eval (Let e1 e2) (Let e1 e2')
     EvLet2 : IsVarHeaded e2 (IxZ t env) -> Eval e1 e1' -> Eval (Let e1 e2) (Let e1' e2)
-    EvLet3 : IsValue e1 -> Eval (Let e1 e2) (subst FZ e1 e2)
+    EvLet3 : IsVarHeaded e2 (IxZ t env) -> IsValue e1 -> Eval (Let e1 e2) (subst FZ e1 e2)
     EvLetrec1 : Eval e e' -> Eval (Letrec ts es e) (Letrec ts es e')
     EvLetrec2 : IsVarHeaded e (indexRightExtend env ix) -> Evals ix es es' ->
         Eval (Letrec ts es e) (Letrec ts es' e)
@@ -81,7 +81,7 @@ mutual
     progress' (Let e1 e2) | Step e2' ev = Step (Let e1 e2') (EvLet1 ev)
     progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh with (progress' e1)
       progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Value v =
-          Step (subst FZ e1 e2) (EvLet3 v)
+          Step (subst FZ e1 e2) (EvLet3 vh v)
       progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Step e1' ev =
           Step (Let e1' e2) (EvLet2 vh ev)
       progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | VarHeaded ix vh' =
@@ -95,7 +95,7 @@ mutual
         progress' (Letrec ts es e) | VarHeaded _ vh | Left (ix' ** Refl) | Steps es' ev =
             Step (Letrec ts es' e) (EvLetrec2 vh ev)
         progress' (Letrec ts es e) | VarHeaded _ vh | Left (ix' ** Refl) | Values e' v =
-            ?something
+            ?eval
       progress' (Letrec ts es e) | VarHeaded (indexLeftExtend ts ix') vh | Right (ix' ** Refl) =
             VarHeaded ix' (LetrecVarR vh)
   progress' {t = DataTy ctrs} (Constr tag es) = Value DataVal
@@ -111,14 +111,17 @@ mutual
 
   progress's : {ts : Vect tl Ty} -> (ix : Index ts t) -> (es : Exprs env ts) -> Progresses ix es
   progress's {tl = S n} {ts = t :: as} (IxZ t as) (e :: es) with (progress' e)
-    progress's {tl = S n} {ts = t :: as} (IxZ t as) (e :: es) | (Value x) = ?somthing_1
-    progress's {tl = S n} {ts = t :: as} (IxZ t as) (e :: es) | (Step e' x) = ?somthing_2
-    progress's {tl = S n} {ts = t :: as} (IxZ t as) (e :: es) | (VarHeaded ix x) = ?somthing_3
+    progress's {tl = S n} {ts = t :: as} (IxZ t as) (e :: es) | (Value v) =
+        Values e v
+    progress's {tl = S n} {ts = t :: as} (IxZ t as) (e :: es) | (Step e' ev) =
+        Steps (e' :: es) (EvIxZ ev)
+    progress's {tl = S n} {ts = t :: as} (IxZ t as) (e :: es) | (VarHeaded ix vh) =
+        ?somthing_3
   progress's {tl = S n} {ts = b :: as} (IxS b ix) (e :: es) with (progress's ix es)
     progress's {tl = S n} {ts = b :: as} (IxS b ix) (e :: es) | Steps es' ev =
         Steps (e :: es') (EvIxS ev)
     progress's {tl = S n} {ts = b :: as} (IxS b ix) (e :: es) | Values e' v =
-        ?othething
+        Values e' v
 
 progress : (e : Expr [] t) -> Either (IsValue e) (e' ** Eval e e')
 progress e with (progress' e)
@@ -132,3 +135,41 @@ evaluate e with (progress e)
   evaluate e | Left v = (e ** (IterRefl, v))
   evaluate e | Right (e' ** ev) with (evaluate e')
     evaluate e | Right (e' ** ev) | (e'' ** (evs, v)) = (e'' ** (IterStep ev evs, v))
+
+-- Determinism
+
+valNotVarHeaded : IsValue e -> Not(IsVarHeaded e ix)
+valNotVarHeaded IntVal vh impossible
+valNotVarHeaded ArrowVal vh impossible
+valNotVarHeaded DataVal vh impossible
+valNotVarHeaded (LetVal v) (LetVarR vh2) = valNotVarHeaded v vh2
+valNotVarHeaded (LetVal v) (LetVarL vh2 vh1) = valNotVarHeaded v vh2
+valNotVarHeaded (LetrecVal v) (LetrecVarR vh2) = valNotVarHeaded v vh2
+
+valNoEval : IsValue e -> Not (Eval e e')
+valNoEval IntVal ev impossible
+valNoEval ArrowVal ev impossible
+valNoEval DataVal ev impossible
+valNoEval (LetVal v1) (EvLet1 ev) = valNoEval v1 ev
+valNoEval (LetVal v1) (EvLet2 vh ev) = valNotVarHeaded v1 vh
+valNoEval (LetVal v1) (EvLet3 vh v2) = valNotVarHeaded v1 vh
+valNoEval (LetrecVal v1) ev = ?thing_5
+
+deterministicEval : Eval e e' -> Eval e e'' -> e' = e''
+deterministicEval (EvApp1 ev1) (EvApp1 ev2) =
+    rewrite deterministicEval ev1 ev2 in Refl
+deterministicEval (EvApp1 ev1) EvApp2 = void (valNoEval ArrowVal ev1)
+deterministicEval (EvApp1 ev1) (EvAppLet v1) = ?deterministic_16
+deterministicEval (EvApp1 ev1) (EvAppLetrec v1) = ?deterministic_17
+deterministicEval EvApp2 ev2 = ?deterministic_2
+deterministicEval (EvAppLet v1) ev2 = ?deterministic_3
+deterministicEval (EvAppLetrec v1) ev2 = ?deterministic_4
+deterministicEval (EvLet1 ev1) ev2 = ?deterministic_5
+deterministicEval (EvLet2 vh1 ev1) ev2 = ?deterministic_6
+deterministicEval (EvLet3 vh1 v1) ev2 = ?deterministic_7
+deterministicEval (EvLetrec1 ev1) ev2 = ?deterministic_8
+deterministicEval (EvLetrec2 vh1 ev1) ev2 = ?deterministic_9
+deterministicEval (EvCase1 ev1) ev2 = ?deterministic_11
+deterministicEval (EvCase2 ev1) ev2 = ?deterministic_12
+deterministicEval (EvCaseLet v1) ev2 = ?deterministic_13
+deterministicEval (EvCaseLetrec v1) ev2 = ?deterministic_14
