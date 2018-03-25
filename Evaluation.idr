@@ -38,7 +38,8 @@ data Eval : Expr env t -> Expr env t -> Type where
   EvLet2 : IsVarHeaded e2 (IxZ t env) -> Eval e1 e1' -> Eval (Let e1 e2) (Let e1' e2)
   EvLet3 : IsVarHeaded e2 (IxZ t env) -> IsValue e1 -> Eval (Let e1 e2) (subst FZ e1 e2)
   EvFix1 : Eval e e' -> Eval (Fix e) (Fix e')
-  EvFix2 : IsValue e -> Eval (Fix e) (App e (Fix e))
+  EvFix2 : Eval (Fix (Abs t1 e1)) (subst FZ (Fix (Abs t1 e1)) e1)
+  EvFixLet : IsValue e2 -> Eval (Fix (Let e1 e2)) (Let e1 (Fix e2))
   EvCase1 : Eval e e' -> Eval (Case e as) (Case e' as)
   EvCase2 : Eval (Case (Constr tag es) as) (altEval tag as es)
   EvCaseLet : IsValue e2 -> Eval (Case (Let e1 e2) as) (Let e1 (Case e2 (incra FZ _ as)))
@@ -70,7 +71,10 @@ progress' (Let e1 e2) with (progress' e2)
         VarHeaded ix (LetVarL vh vh')
   progress' (Let e1 e2) | VarHeaded (IxS t1 ix) vh = VarHeaded ix (LetVarR vh)
 progress' (Fix e) with (progress' e)
-  progress' (Fix e) | Value v = Step (App e (Fix e)) (EvFix2 v)
+  progress' (Fix (Abs t e)) | Value ArrowVal =
+      Step (subst FZ (Fix (Abs t e)) e) EvFix2
+  progress' (Fix (Let e1 e2)) | Value (LetVal v) =
+      Step (Let e1 (Fix e2)) (EvFixLet v)
   progress' (Fix e) | Step e' ev = Step (Fix e') (EvFix1 ev)
   progress' (Fix e) | VarHeaded ix vh = VarHeaded ix (FixVar vh)
 progress' {t = DataTy ctrs} (Constr tag es) = Value DataVal
