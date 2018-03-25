@@ -24,7 +24,7 @@ data IsVarHeaded : Expr env t -> Index env t' -> Type where
   FixVar : IsVarHeaded e ix -> IsVarHeaded (Fix e) ix
   CaseVar : IsVarHeaded e ix -> IsVarHeaded (Case e as) ix
 
-export
+public export
 data AltEval : Fin n -> Exprs env ts -> Alts env ctrs t -> Expr env t -> Type where
   AltEvFZ : AltEval FZ es (Alt e as) (multisubst es e)
   AltEvFS : AltEval x es as e -> AltEval (FS x) es (Alt e' as) e
