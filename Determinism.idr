@@ -40,7 +40,7 @@ varHeadedNoEval (LetVarR vh2) (EvLet3 vh v) = varHeadedDiff vh vh2
 varHeadedNoEval (FixVar vh) (EvFix1 ev) = varHeadedNoEval vh ev
 varHeadedNoEval (FixVar vh) (EvFix2 v) = valNotVarHeaded v vh
 varHeadedNoEval (CaseVar vh) (EvCase1 ev) = varHeadedNoEval vh ev
-varHeadedNoEval (CaseVar vh) (EvCase2 ev) impossible
+varHeadedNoEval (CaseVar vh) EvCase2 impossible
 varHeadedNoEval (CaseVar (LetVarL vh2 vh1)) (EvCaseLet v) = valNotVarHeaded v vh2
 varHeadedNoEval (CaseVar (LetVarR vh2)) (EvCaseLet v) = valNotVarHeaded v vh2
 
@@ -51,10 +51,6 @@ valNoEval DataVal ev impossible
 valNoEval (LetVal v1) (EvLet1 ev) = valNoEval v1 ev
 valNoEval (LetVal v1) (EvLet2 vh ev) = valNotVarHeaded v1 vh
 valNoEval (LetVal v1) (EvLet3 vh v2) = valNotVarHeaded v1 vh
-
-deterministicAltEval : AltEval tag es as e -> AltEval tag es as e' -> e = e'
-deterministicAltEval AltEvFZ AltEvFZ = Refl
-deterministicAltEval (AltEvFS ev1) (AltEvFS ev2) = deterministicAltEval ev1 ev2
 
 deterministicEval : Eval e e' -> Eval e e'' -> e' = e''
 deterministicEval (EvApp1 ev1) (EvApp1 ev2) = rewrite deterministicEval ev1 ev2 in Refl
@@ -82,12 +78,12 @@ deterministicEval (EvFix1 ev1) (EvFix2 v2) = void (valNoEval v2 ev1)
 deterministicEval (EvFix2 v1) (EvFix1 ev2) = void (valNoEval v1 ev2)
 deterministicEval (EvFix2 v1) (EvFix2 v2) = Refl
 deterministicEval (EvCase1 ev1) (EvCase1 ev2) = rewrite deterministicEval ev1 ev2 in Refl
-deterministicEval (EvCase1 ev1) (EvCase2 ev2) = void (valNoEval DataVal ev1)
+deterministicEval (EvCase1 ev1) EvCase2 = void (valNoEval DataVal ev1)
 deterministicEval (EvCase1 (EvLet1 ev1)) (EvCaseLet v2) = void (valNoEval v2 ev1)
 deterministicEval (EvCase1 (EvLet2 vh1 ev1)) (EvCaseLet v2) = void (valNotVarHeaded v2 vh1)
 deterministicEval (EvCase1 (EvLet3 vh1 v1)) (EvCaseLet v2) = void (valNotVarHeaded v2 vh1)
-deterministicEval (EvCase2 ev1) (EvCase1 ev2) = void (valNoEval DataVal ev2)
-deterministicEval (EvCase2 ev1) (EvCase2 ev2) = deterministicAltEval ev1 ev2
+deterministicEval EvCase2 (EvCase1 ev2) = void (valNoEval DataVal ev2)
+deterministicEval EvCase2 EvCase2 = Refl
 deterministicEval (EvCaseLet v1) (EvCase1 (EvLet1 ev2)) = void (valNoEval v1 ev2)
 deterministicEval (EvCaseLet v1) (EvCase1 (EvLet2 vh2 ev2)) = void (valNotVarHeaded v1 vh2)
 deterministicEval (EvCaseLet v1) (EvCase1 (EvLet3 vh2 v2)) = void (valNotVarHeaded v1 vh2)
