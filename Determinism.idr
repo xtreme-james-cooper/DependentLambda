@@ -5,6 +5,13 @@ import Lambda
 import Data.Vect
 import Index
 
+valSame : (v1 : IsValue e) -> (v2 : IsValue e) -> v1 = v2
+valSame IntVal IntVal = Refl
+valSame ArrowVal ArrowVal = Refl
+valSame DataVal DataVal = Refl
+valSame (LetVal v1) (LetVal v2) with (valSame v1 v2)
+  valSame (LetVal v1) (LetVal v1) | Refl = Refl
+
 valNotVarHeaded : IsValue e -> Not (IsVarHeaded e ix)
 valNotVarHeaded IntVal vh impossible
 valNotVarHeaded ArrowVal vh impossible
@@ -74,7 +81,7 @@ deterministicEval (EvLet2 vh1 ev1) (EvLet2 vh2 ev2) = rewrite deterministicEval 
 deterministicEval (EvLet2 vh1 ev1) (EvLet3 vh2 v2) = void (valNoEval v2 ev1)
 deterministicEval (EvLet3 vh1 v1) (EvLet1 ev2) = void (varHeadedNoEval vh1 ev2)
 deterministicEval (EvLet3 vh1 v1) (EvLet2 vh2 ev2) = void (valNoEval v1 ev2)
-deterministicEval (EvLet3 vh1 v1) (EvLet3 vh2 v2) = Refl
+deterministicEval (EvLet3 vh1 v1) (EvLet3 vh2 v2) = rewrite valSame v1 v2 in Refl
 deterministicEval (EvFix1 ev1) (EvFix1 ev2) = rewrite deterministicEval ev1 ev2 in Refl
 deterministicEval (EvFix1 ev1) EvFix2 = void (valNoEval ArrowVal ev1)
 deterministicEval (EvFix1 (EvLet1 ev1)) (EvFixLet v2) = void (valNoEval v2 ev1)

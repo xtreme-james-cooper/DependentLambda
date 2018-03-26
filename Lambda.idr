@@ -47,6 +47,7 @@ mutual
   incr x tt (Constr tag es) = Constr tag (incrs x tt es)
   incr x tt (Case e as) = Case (incr x tt e) (incra x tt as)
 
+  export
   incrs : (x : Fin (S n)) -> (tt : Ty) -> Exprs env ts -> Exprs (insertAt x tt env) ts
   incrs x tt [] = []
   incrs x tt (e :: es) = incr x tt e :: incrs x tt es
