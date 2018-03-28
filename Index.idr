@@ -1,6 +1,7 @@
 module Index
 
 import Data.Vect
+import VectHelper
 
 %default total
 
@@ -84,3 +85,11 @@ indexSubr b (FS x) (IxS y ix) neq {env = (y :: env)} =
     IxS y (indexSubr b x ix (npf neq))
         where npf : (neq : Not (FS i = FS j)) -> Not (i = j)
               npf neq Refl = neq Refl
+
+export
+indexSubst : (x : Fin (S n)) -> Index env t' -> Index (insertAt x t' env) t -> Index env t
+indexSubst x ix' ix {t' = t'} {env = env} with (compareFinToIndex x ix)
+  indexSubst x ix' ix {t' = t'} {env = env} | Yes eq with (indexOfIndex x ix eq)
+   indexSubst x ix' ix {t' = t'} {env = env} | Yes eq | Refl =
+       rewrite indexInsertAt x t' env in ix'
+  indexSubst x ix' ix {t' = t'} {env = env} | No neq = indexSubr _ x ix neq

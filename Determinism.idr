@@ -23,21 +23,36 @@ valNotVarHeaded (LetVal v) (LetVarR vh2) = valNotVarHeaded v vh2
 valNotVarHeaded (LetVal v) (LetVarL vh2 vh1) = valNotVarHeaded v vh2
 
 mutual
-  varHeadedSame : {ix : Index as t'} -> {ix' : Index as t''} ->
+  varHeadedSameIndex : {ix : Index as t'} -> {ix' : Index as t''} ->
       IsVarHeaded e ix -> IsVarHeaded e ix' -> ix = ix'
-  varHeadedSame VarVar VarVar = Refl
-  varHeadedSame (AppVar vh1) (AppVar vh2) = varHeadedSame vh1 vh2
-  varHeadedSame (LetVarL vh12 vh11) (LetVarL vh22 vh21) = varHeadedSame vh11 vh21
-  varHeadedSame (LetVarL vh12 vh11) (LetVarR vh22) = void (varHeadedDiff vh12 vh22)
-  varHeadedSame (LetVarR vh12) (LetVarR vh22) with (varHeadedSame vh12 vh22)
-    varHeadedSame (LetVarR vh12) (LetVarR vh22) | Refl = Refl
-  varHeadedSame (LetVarR vh12) (LetVarL vh22 vh21) = void (varHeadedDiff vh22 vh12)
-  varHeadedSame (FixVar vh1) (FixVar vh2) = varHeadedSame vh1 vh2
-  varHeadedSame (CaseVar vh1) (CaseVar vh2) = varHeadedSame vh1 vh2
+  varHeadedSameIndex VarVar VarVar = Refl
+  varHeadedSameIndex (AppVar vh1) (AppVar vh2) = varHeadedSameIndex vh1 vh2
+  varHeadedSameIndex (LetVarL vh12 vh11) (LetVarL vh22 vh21) = varHeadedSameIndex vh11 vh21
+  varHeadedSameIndex (LetVarL vh12 vh11) (LetVarR vh22) = void (varHeadedDiff vh12 vh22)
+  varHeadedSameIndex (LetVarR vh12) (LetVarR vh22) with (varHeadedSameIndex vh12 vh22)
+    varHeadedSameIndex (LetVarR vh12) (LetVarR vh22) | Refl = Refl
+  varHeadedSameIndex (LetVarR vh12) (LetVarL vh22 vh21) = void (varHeadedDiff vh22 vh12)
+  varHeadedSameIndex (FixVar vh1) (FixVar vh2) = varHeadedSameIndex vh1 vh2
+  varHeadedSameIndex (CaseVar vh1) (CaseVar vh2) = varHeadedSameIndex vh1 vh2
 
   varHeadedDiff : IsVarHeaded e (IxZ a as) -> Not (IsVarHeaded e (IxS a ix))
-  varHeadedDiff vh1 vh2 with (varHeadedSame vh1 vh2)
+  varHeadedDiff vh1 vh2 with (varHeadedSameIndex vh1 vh2)
     varHeadedDiff vh1 vh2 | Refl impossible
+
+varHeadedSame : (vh1 : IsVarHeaded e ix) -> (vh2 : IsVarHeaded e ix) -> vh1 = vh2
+varHeadedSame VarVar VarVar = Refl
+varHeadedSame (AppVar vh1) (AppVar vh2) with (varHeadedSame vh1 vh2)
+  varHeadedSame (AppVar vh1) (AppVar vh1) | Refl = Refl
+varHeadedSame (LetVarL vh12 vh11) (LetVarL vh22 vh21) with (varHeadedSame vh11 vh21, varHeadedSame vh12 vh22)
+  varHeadedSame (LetVarL vh12 vh11) (LetVarL vh12 vh11) | (Refl, Refl) = Refl
+varHeadedSame (LetVarL vh12 vh11) (LetVarR vh22) = void (varHeadedDiff vh12 vh22)
+varHeadedSame (LetVarR vh12) (LetVarL vh22 vh21) = void (varHeadedDiff vh22 vh12)
+varHeadedSame (LetVarR vh12) (LetVarR vh22) with (varHeadedSame vh12 vh22)
+  varHeadedSame (LetVarR vh12) (LetVarR vh12) | Refl = Refl
+varHeadedSame (FixVar vh1) (FixVar vh2) with (varHeadedSame vh1 vh2)
+  varHeadedSame (FixVar vh1) (FixVar vh1) | Refl = Refl
+varHeadedSame (CaseVar vh1) (CaseVar vh2) with (varHeadedSame vh1 vh2)
+  varHeadedSame (CaseVar vh1) (CaseVar vh1) | Refl = Refl
 
 varHeadedNoEval : IsVarHeaded e ix -> Not (Eval e e')
 varHeadedNoEval (AppVar vh) (EvApp1 ev) = varHeadedNoEval vh ev
@@ -87,7 +102,8 @@ deterministicEval (EvLet2 vh1 ev1) (EvLet2 vh2 ev2) = rewrite deterministicEval 
 deterministicEval (EvLet2 vh1 ev1) (EvLet3 vh2 v2) = void (valNoEval v2 ev1)
 deterministicEval (EvLet3 vh1 v1) (EvLet1 ev2) = void (varHeadedNoEval vh1 ev2)
 deterministicEval (EvLet3 vh1 v1) (EvLet2 vh2 ev2) = void (valNoEval v1 ev2)
-deterministicEval (EvLet3 vh1 v1) (EvLet3 vh2 v2) = rewrite valSame v1 v2 in Refl
+deterministicEval (EvLet3 vh1 v1) (EvLet3 vh2 v2) =
+    rewrite valSame v1 v2 in rewrite varHeadedSame vh1 vh2 in Refl
 deterministicEval (EvFix1 ev1) (EvFix1 ev2) = rewrite deterministicEval ev1 ev2 in Refl
 deterministicEval (EvFix1 ev1) EvFix2 = void (valNoEval ArrowVal ev1)
 deterministicEval (EvFix1 (EvLet1 ev1)) (EvFixLet v2) = void (valNoEval v2 ev1)

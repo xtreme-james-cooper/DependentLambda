@@ -1,4 +1,4 @@
-module Index
+module VectHelper
 
 import Data.Vect
 

@@ -32,6 +32,7 @@ mutual
             rewrite appendInsert xs env x tt in incr (extendFin p x) tt e
       in Alt e' (incra x tt as)
 
+export
 incrIsVal : (x : Fin (S n)) -> IsValue e -> IsValue (incr x t e)
 incrIsVal x IntVal = IntVal
 incrIsVal x ArrowVal = ArrowVal
@@ -50,54 +51,47 @@ multiincra {ts' = t :: ts'} as = incra FZ t (multiincra as)
 
 export
 subst : {ix : Index env t'} -> (e' : Expr env t') -> (e : Expr env t) ->
-    IsValue e' -> IsVarHeaded e ix -> (e'' : Expr env t ** Not (e'' = e))
-subst e' (Var ix) v VarVar = (e' ** ?subst1)
-subst e' (App e1 e2) v (AppVar vh) with (subst e' e1 v vh)
-  subst e' (App e1 e2) v (AppVar vh) | (e1' ** neq) =
-      (App e1' e2 ** ?subst2)
-subst e' (Let e1 e2) v (LetVarL vh2 vh1) with (subst e' e1 v vh1)
-  subst e' (Let e1 e2) v (LetVarL vh2 vh1) | (e1' ** neq) =
-      (Let e1' e2 ** ?subst3)
-subst e' (Let e1 e2) v (LetVarR vh2) with (subst (incr FZ _ e') e2 (incrIsVal FZ v) vh2)
-  subst e' (Let e1 e2) v (LetVarR vh2) | (e2' ** neq) =
-      (Let e1 e2' ** ?subst4)
-subst e' (Fix e) v (FixVar vh) with (subst e' e v vh)
-  subst e' (Fix e) v (FixVar vh) | (e1' ** neq) =
-      (Fix e1' ** ?subst5)
-subst e' (Case e as) v (CaseVar vh) with (subst e' e v vh)
-  subst e' (Case e as) v (CaseVar vh) | (e1' ** neq) =
-      (Case e1' as ** ?subst6)
+    IsValue e' -> IsVarHeaded e ix -> Expr env t
+subst e' (Var ix) v VarVar = e'
+subst e' (App e1 e2) v (AppVar vh) = App (subst e' e1 v vh) e2
+subst e' (Let e1 e2) v (LetVarL vh2 vh1) = Let (subst e' e1 v vh1) e2
+subst e' (Let e1 e2) v (LetVarR vh2) =
+    Let e1 (subst (incr FZ _ e') e2 (incrIsVal FZ v) vh2)
+subst e' (Fix e) v (FixVar vh) = Fix (subst e' e v vh)
+subst e' (Case e as) v (CaseVar vh) = Case (subst e' e v vh) as
+
+varsSubst : (x : Fin (S n)) -> Index env t' -> VarArgs (insertAt x t' env) ts -> VarArgs env ts
+varsSubst x ix' [] = []
+varsSubst x ix' (ix :: ixs) = indexSubst x ix' ix :: varsSubst x ix' ixs
+
+mutual
+  varSubst : (x : Fin (S n)) -> Index env t' -> Expr (insertAt x t' env) t -> Expr env t
+  varSubst x ix' (Var ix) = Var (indexSubst x ix' ix)
+  varSubst x ix' (Num n) = Num n
+  varSubst x ix' (App e1 e2) = App (varSubst x ix' e1) (varSubst x ix' e2)
+  varSubst x ix' (Abs t1 e) = Abs t1 (varSubst (FS x) (IxS _ ix') e)
+  varSubst x ix' (Let e1 e2) = Let (varSubst x ix' e1) (varSubst (FS x) (IxS _ ix') e2)
+  varSubst x ix' (Fix e) = Fix (varSubst x ix' e)
+  varSubst x ix' (Constr tag es) = Constr tag (varsSubst x ix' es)
+  varSubst x ix' (Case e as) = Case (varSubst x ix' e) (varSubsta x ix' as)
+
+  varSubsta : (x : Fin (S n)) -> Index env t' -> Alts (insertAt x t' env) ctrs t -> Alts env ctrs t
+  varSubsta x ix' Fail = Fail
+  varSubsta {t' = t'} {env = env} {ctrs = (p ** xs) :: ctrs} x ix' (Alt e as) =
+      let ep : Expr (insertAt (extendFin p x) t' (xs ++ env)) t =
+          rewrite sym (appendInsert xs env x t') in e
+      in let small_ep : Expr (insertAt (extendFin p x) t' (xs ++ env)) t =
+          assert_smaller (Alt e as) ep
+      in Alt (varSubst (extendFin p x) (indexLeftExtend xs ix') small_ep)
+             (varSubsta x ix' as)
 
 export
-multisubst : Exprs env ts -> Expr (ts ++ env) t -> Expr env t
+multisubst : VarArgs env ts -> Expr (ts ++ env) t -> Expr env t
 multisubst [] e = e
-multisubst (e' :: es) e = multisubst es (subst FZ (multiincr e') e)
+multisubst {ts = t :: ts} (ix :: ixs) e =
+    multisubst ixs (varSubst FZ (indexLeftExtend ts ix) e)
 
 export
-altEval : (x : Fin n) -> Alts env ctrs t -> Exprs env (snd (index x ctrs)) -> Expr env t
+altEval : (x : Fin n) -> Alts env ctrs t -> VarArgs env (snd (index x ctrs)) -> Expr env t
 altEval FZ (Alt e as) es = multisubst es e
 altEval (FS x) (Alt e as) es = altEval x as es
-
-anfCtor : (ctr : Vect p Ty) -> (es : Exprs env ctr) ->
-    ({t : Ty} -> Expr (ctr ++ env) t -> Expr env t, Exprs (ctr ++ env) ctr)
-anfCtor [] [] = (id, [])
-anfCtor (t :: ts) (e :: es) = case anfCtor ts es of
-    (letf, ctrArgs) =>
-        (\e' => letf (Let (multiincr e) e'), (Var (IxZ t _)) :: incrs FZ t ctrArgs)
-
-export
-sharingSubst : {e' : Expr env t'} -> (x : Fin (S n)) -> IsValue e' ->
-    Expr (insertAt x t' env) t -> Expr env t
-sharingSubst {e' = Num n} x IntVal e = subst x (Num n) e
-sharingSubst {e' = Abs t e'} x ArrowVal e = subst x (Abs t e') e
-sharingSubst {env = env} {t = t} {e' = Constr {ctrs = ctrs} tag es} x DataVal e =
-    case anfCtor (snd (index tag ctrs)) es of
-        (letf, newArgs) =>
-            let e' : Expr (insertAt (extendFin (fst (index tag ctrs)) x)
-                                    (DataTy ctrs)
-                                    (snd (index tag ctrs) ++ env)) t =
-                rewrite sym (appendInsert (snd (index tag ctrs)) env x (DataTy ctrs))
-                in multiincr e
-            in letf (subst (extendFin (fst (index tag ctrs)) x) (Constr tag newArgs) e')
-sharingSubst {e' = Let e1 e2} x (LetVal v) e =
-    Let e1 (sharingSubst (FS x) v (incr FZ _ e))
