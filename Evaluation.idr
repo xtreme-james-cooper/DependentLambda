@@ -16,8 +16,8 @@ data Eval : Expr env t -> Expr env t -> Type where
   EvAppLet : IsValue e12 -> Eval (App (Let e11 e12) e2) (Let e11 (App e12 (incr FZ _ e2)))
   EvLet1 : Eval e2 e2' -> Eval (Let e1 e2) (Let e1 e2')
   EvLet2 : IsVarHeaded e2 (IxZ t env) -> Eval e1 e1' -> Eval (Let e1 e2) (Let e1' e2)
-  EvLet3 : IsVarHeaded e2 (IxZ t env) -> (v : IsValue e1) ->
-      Eval (Let e1 e2) (sharingSubst FZ v e2)
+  EvLet3 : (vh : IsVarHeaded e2 (IxZ t env)) -> (v : IsValue e1) ->
+      Eval (Let e1 e2) (fst (subst e1 e2 v vh))
   EvFix1 : Eval e e' -> Eval (Fix e) (Fix e')
   EvFix2 : Eval (Fix (Abs t1 e1)) (subst FZ (Fix (Abs t1 e1)) e1)
   EvFixLet : IsValue e2 -> Eval (Fix (Let e1 e2)) (Let e1 (Fix e2))

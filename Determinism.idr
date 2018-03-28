@@ -6,6 +6,8 @@ import LambdaOperations
 import Data.Vect
 import Index
 
+%default total
+
 valSame : (v1 : IsValue e) -> (v2 : IsValue e) -> v1 = v2
 valSame IntVal IntVal = Refl
 valSame ArrowVal ArrowVal = Refl
@@ -20,19 +22,22 @@ valNotVarHeaded DataVal vh impossible
 valNotVarHeaded (LetVal v) (LetVarR vh2) = valNotVarHeaded v vh2
 valNotVarHeaded (LetVal v) (LetVarL vh2 vh1) = valNotVarHeaded v vh2
 
-varHeadedSame : {ix : Index as t'} -> {ix' : Index as t''} ->
-    IsVarHeaded e ix -> IsVarHeaded e ix' -> ix = ix'
-varHeadedSame VarVar VarVar = Refl
-varHeadedSame (AppVar vh1) (AppVar vh2) = varHeadedSame vh1 vh2
-varHeadedSame (LetVarL vh12 vh11) (LetVarL vh22 vh21) = varHeadedSame vh11 vh21
-varHeadedSame (LetVarR vh12) (LetVarR vh22) with (varHeadedSame vh12 vh22)
-  varHeadedSame (LetVarR vh12) (LetVarR vh22) | Refl = Refl
-varHeadedSame (FixVar vh1) (FixVar vh2) = varHeadedSame vh1 vh2
-varHeadedSame (CaseVar vh1) (CaseVar vh2) = varHeadedSame vh1 vh2
+mutual
+  varHeadedSame : {ix : Index as t'} -> {ix' : Index as t''} ->
+      IsVarHeaded e ix -> IsVarHeaded e ix' -> ix = ix'
+  varHeadedSame VarVar VarVar = Refl
+  varHeadedSame (AppVar vh1) (AppVar vh2) = varHeadedSame vh1 vh2
+  varHeadedSame (LetVarL vh12 vh11) (LetVarL vh22 vh21) = varHeadedSame vh11 vh21
+  varHeadedSame (LetVarL vh12 vh11) (LetVarR vh22) = void (varHeadedDiff vh12 vh22)
+  varHeadedSame (LetVarR vh12) (LetVarR vh22) with (varHeadedSame vh12 vh22)
+    varHeadedSame (LetVarR vh12) (LetVarR vh22) | Refl = Refl
+  varHeadedSame (LetVarR vh12) (LetVarL vh22 vh21) = void (varHeadedDiff vh22 vh12)
+  varHeadedSame (FixVar vh1) (FixVar vh2) = varHeadedSame vh1 vh2
+  varHeadedSame (CaseVar vh1) (CaseVar vh2) = varHeadedSame vh1 vh2
 
-varHeadedDiff : IsVarHeaded e (IxZ a as) -> Not (IsVarHeaded e (IxS a ix))
-varHeadedDiff vh1 vh2 with (varHeadedSame vh1 vh2)
-  varHeadedDiff vh1 vh2 | Refl impossible
+  varHeadedDiff : IsVarHeaded e (IxZ a as) -> Not (IsVarHeaded e (IxS a ix))
+  varHeadedDiff vh1 vh2 with (varHeadedSame vh1 vh2)
+    varHeadedDiff vh1 vh2 | Refl impossible
 
 varHeadedNoEval : IsVarHeaded e ix -> Not (Eval e e')
 varHeadedNoEval (AppVar vh) (EvApp1 ev) = varHeadedNoEval vh ev

@@ -11,6 +11,11 @@ data Ty : Type where
   IntTy : Ty
   DataTy : Vect m (n ** Vect n Ty) -> Ty
 
+public export
+data VarArgs : Vect n Ty -> Vect m Ty -> Type where
+  Nil : VarArgs env []
+  (::) : Index env t -> VarArgs env ts -> VarArgs env (t :: ts)
+
 mutual
   public export
   data Expr : Vect n Ty -> Ty -> Type where
@@ -21,13 +26,8 @@ mutual
     Let : Expr env t1 -> Expr (t1 :: env) t2 -> Expr env t2
     Fix : Expr env (ArrowTy t t) -> Expr env t
     Constr : {ctrs : Vect m (n ** Vect n Ty)} -> (tag : Fin m) ->
-        Exprs env (snd (index tag ctrs)) -> Expr env (DataTy ctrs)
+        VarArgs env (snd (index tag ctrs)) -> Expr env (DataTy ctrs)
     Case : Expr env (DataTy ctrs) -> Alts env ctrs t -> Expr env t
-
-  public export
-  data Exprs : Vect n Ty -> Vect m Ty -> Type where
-    Nil : Exprs env []
-    (::) : Expr env t -> Exprs env ts -> Exprs env (t :: ts)
 
   public export
   data Alts : Vect n Ty -> Vect m (p ** Vect p Ty) -> Ty -> Type where

@@ -1,5 +1,7 @@
 module Iterate
 
+%default total
+
 public export
 data Iterate : (a -> a -> Type) -> a -> a -> Type where
   IterRefl : Iterate f a a
