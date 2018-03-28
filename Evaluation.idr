@@ -2,56 +2,12 @@ module Evaluation
 
 import Data.Vect
 import Lambda
+import LambdaOperations
 import Index
 import VectHelper
 import Iterate
 
 %default total
-
-public export
-data IsValue : Expr env t -> Type where
-  IntVal : IsValue (Num x)
-  ArrowVal : IsValue (Abs t e)
-  DataVal : IsValue (Constr tag es)
-  LetVal : IsValue e2 -> IsValue (Let e1 e2)
-
-public export
-data IsVarHeaded : Expr env t -> Index env t' -> Type where
-  VarVar : IsVarHeaded (Var ix) ix
-  AppVar : IsVarHeaded e1 ix -> IsVarHeaded (App e1 e2) ix
-  LetVarL : IsVarHeaded e2 (IxZ t1 env) -> IsVarHeaded e1 ix -> IsVarHeaded (Let e1 e2) ix
-  LetVarR : IsVarHeaded e2 (IxS b ix) -> IsVarHeaded (Let e1 e2) ix
-  FixVar : IsVarHeaded e ix -> IsVarHeaded (Fix e) ix
-  CaseVar : IsVarHeaded e ix -> IsVarHeaded (Case e as) ix
-
-public export
-altEval : (x : Fin n) -> Alts env ctrs t -> Exprs env (snd (index x ctrs)) -> Expr env t
-altEval FZ (Alt e as) es = multisubst es e
-altEval (FS x) (Alt e as) es = altEval x as es
-
-anfCtor : (ctr : Vect p Ty) -> (es : Exprs env ctr) ->
-    ({t : Ty} -> Expr (ctr ++ env) t -> Expr env t, Exprs (ctr ++ env) ctr)
-anfCtor [] [] = (id, [])
-anfCtor (t :: ts) (e :: es) = case anfCtor ts es of
-    (letf, ctrArgs) =>
-        (\e' => letf (Let (multiincr e) e'), (Var (IxZ t _)) :: incrs FZ t ctrArgs)
-
-export
-sharingSubst : {e' : Expr env t'} -> (x : Fin (S n)) -> IsValue e' ->
-    Expr (insertAt x t' env) t -> Expr env t
-sharingSubst {e' = Num n} x IntVal e = subst x (Num n) e
-sharingSubst {e' = Abs t e'} x ArrowVal e = subst x (Abs t e') e
-sharingSubst {env = env} {t = t} {e' = Constr {ctrs = ctrs} tag es} x DataVal e =
-    case anfCtor (snd (index tag ctrs)) es of
-        (letf, newArgs) =>
-            let e' : Expr (insertAt (extendFin (fst (index tag ctrs)) x)
-                                    (DataTy ctrs)
-                                    (snd (index tag ctrs) ++ env)) t =
-                rewrite sym (appendInsert (snd (index tag ctrs)) env x (DataTy ctrs))
-                in multiincr e
-            in letf (subst (extendFin (fst (index tag ctrs)) x) (Constr tag newArgs) e')
-sharingSubst {e' = Let e1 e2} x (LetVal v) e =
-    Let e1 (sharingSubst (FS x) v (incr FZ _ e))
 
 public export
 data Eval : Expr env t -> Expr env t -> Type where

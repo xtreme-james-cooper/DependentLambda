@@ -2,7 +2,6 @@ module Lambda
 
 import Data.Vect
 import Index
-import VectHelper
 
 %default total
 
@@ -35,71 +34,18 @@ mutual
     Fail : Alts env [] t
     Alt : Expr (xs ++ env) t -> Alts env ctrs t -> Alts env ((p ** xs) :: ctrs) t
 
-mutual
-  export
-  incr : (x : Fin (S n)) -> (tt : Ty) -> Expr env t -> Expr (insertAt x tt env) t
-  incr x tt (Var ix) = Var (indexInsert tt x ix)
-  incr x tt (Num n) = Num n
-  incr x tt (App e1 e2) = App (incr x tt e1) (incr x tt e2)
-  incr x tt (Abs t1 e) = Abs t1 (incr (FS x) tt e)
-  incr x tt (Let e1 e2) = Let (incr x tt e1) (incr (FS x) tt e2)
-  incr x tt (Fix e) = Fix (incr x tt e)
-  incr x tt (Constr tag es) = Constr tag (incrs x tt es)
-  incr x tt (Case e as) = Case (incr x tt e) (incra x tt as)
+public export
+data IsValue : Expr env t -> Type where
+  IntVal : IsValue (Num x)
+  ArrowVal : IsValue (Abs t e)
+  DataVal : IsValue (Constr tag es)
+  LetVal : IsValue e2 -> IsValue (Let e1 e2)
 
-  export
-  incrs : (x : Fin (S n)) -> (tt : Ty) -> Exprs env ts -> Exprs (insertAt x tt env) ts
-  incrs x tt [] = []
-  incrs x tt (e :: es) = incr x tt e :: incrs x tt es
-
-  export
-  incra : (x : Fin (S n)) -> (tt : Ty) -> Alts env ctrs ts -> Alts (insertAt x tt env) ctrs ts
-  incra x tt Fail = Fail
-  incra {env = env} {ctrs = (p ** xs) :: ctrs} x tt (Alt e as) =
-      let e' : Expr (xs ++ insertAt x tt env) ts =
-            rewrite appendInsert xs env x tt in incr (extendFin p x) tt e
-      in Alt e' (incra x tt as)
-
-export
-multiincr : Expr env t -> Expr (ts ++ env) t
-multiincr {ts = []} e = e
-multiincr {ts = t :: ts} e = incr FZ t (multiincr e)
-
-export
-multiincra : Alts env ctrs ts -> Alts (ts' ++ env) ctrs ts
-multiincra {ts' = []} as = as
-multiincra {ts' = t :: ts'} as = incra FZ t (multiincra as)
-
-mutual
-  export
-  subst : (x : Fin (S n)) -> Expr env t' -> Expr (insertAt x t' env) t -> Expr env t
-  subst x e' (Var ix) {t' = t'} {env = env} with (compareFinToIndex x ix)
-    subst x e' (Var ix) {t' = t'} {env = env} | Yes eq with (indexOfIndex x ix eq)
-      subst x e' (Var ix) {t' = t'} {env = env} | Yes eq | Refl =
-          rewrite indexInsertAt x t' env in e'
-    subst x e' (Var ix) {t' = t'} {env = env} | No npf = Var (indexSubr _ x ix npf)
-  subst x e' (Num n) = Num n
-  subst x e' (App e1 e2) = App (subst x e' e1) (subst x e' e2)
-  subst x e' (Abs t1 e) = Abs t1 (subst (FS x) (incr FZ t1 e') e)
-  subst x e' (Let e1 e2) = Let (subst x e' e1) (subst (FS x) (incr FZ _ e') e2)
-  subst x e' (Fix e) = Fix (subst x e' e)
-  subst x e' (Constr tag es) = Constr tag (substs x e' es)
-  subst x e' (Case e as) = Case (subst x e' e) (substa x e' as)
-
-  substs : (x : Fin (S n)) -> Expr env t' -> Exprs (insertAt x t' env) ts -> Exprs env ts
-  substs x e' [] = []
-  substs x e' (e :: es) = subst x e' e :: substs x e' es
-
-  substa : (x : Fin (S n)) -> Expr env t' -> Alts (insertAt x t' env) ctrs ts -> Alts env ctrs ts
-  substa x e' Fail = Fail
-  substa {t' = t'} {env = env} {ctrs = (p ** xs) :: ctrs} x e' (Alt e as) =
-      let ep : Expr (insertAt (extendFin p x) t' (xs ++ env)) ts =
-            rewrite sym (appendInsert xs env x t') in e
-      in let small_ep : Expr (insertAt (extendFin p x) t' (xs ++ env)) ts =
-            assert_smaller (Alt e as) ep
-      in Alt (subst (extendFin p x) (multiincr e') small_ep) (substa x e' as)
-
-export
-multisubst : Exprs env ts -> Expr (ts ++ env) t -> Expr env t
-multisubst [] e = e
-multisubst (e' :: es) e = multisubst es (subst FZ (multiincr e') e)
+public export
+data IsVarHeaded : Expr env t -> Index env t' -> Type where
+  VarVar : IsVarHeaded (Var ix) ix
+  AppVar : IsVarHeaded e1 ix -> IsVarHeaded (App e1 e2) ix
+  LetVarL : IsVarHeaded e2 (IxZ t1 env) -> IsVarHeaded e1 ix -> IsVarHeaded (Let e1 e2) ix
+  LetVarR : IsVarHeaded e2 (IxS b ix) -> IsVarHeaded (Let e1 e2) ix
+  FixVar : IsVarHeaded e ix -> IsVarHeaded (Fix e) ix
+  CaseVar : IsVarHeaded e ix -> IsVarHeaded (Case e as) ix
