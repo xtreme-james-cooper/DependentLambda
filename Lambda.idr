@@ -2,35 +2,32 @@ module Lambda
 
 import Data.Vect
 import Index
+import Ty
 
 %default total
 
 public export
-data Ty : Type where
-  ArrowTy : Ty -> Ty -> Ty
-  IntTy : Ty
-  DataTy : Vect m (n ** Vect n Ty) -> Ty
-
-public export
-data VarArgs : Vect n Ty -> Vect m Ty -> Type where
+data VarArgs : Vect n (Ty tn) -> Vect m (Ty tn) -> Type where
   Nil : VarArgs env []
   (::) : Index env t -> VarArgs env ts -> VarArgs env (t :: ts)
 
 mutual
   public export
-  data Expr : Vect n Ty -> Ty -> Type where
+  data Expr : Vect n (Ty tn) -> Ty tn -> Type where
     Var : Index env t -> Expr env t
     Num : Int -> Expr env IntTy
     App : Expr env (ArrowTy t1 t2) -> Expr env t1 -> Expr env t2
-    Abs : (t1 : Ty) -> Expr (t1 :: env) t2 -> Expr env (ArrowTy t1 t2)
+    Abs : (t1 : Ty tn) -> Expr (t1 :: env) t2 -> Expr env (ArrowTy t1 t2)
     Let : Expr env t1 -> Expr (t1 :: env) t2 -> Expr env t2
     Fix : Expr env (ArrowTy t t) -> Expr env t
-    Constr : {ctrs : Vect m (n ** Vect n Ty)} -> (tag : Fin m) ->
+    Constr : {ctrs : Vect m (n ** Vect n (Ty tn))} -> (tag : Fin m) ->
         VarArgs env (snd (index tag ctrs)) -> Expr env (DataTy ctrs)
     Case : Expr env (DataTy ctrs) -> Alts env ctrs t -> Expr env t
+    TyApp : Expr env t -> (t' : Ty tn) -> Expr (map (tsubst 0 t') env) (tsubst 0 t' t)
+    TyAbs : Expr (map (tyincr 0) env) (tyincr 0 t) -> Expr env t
 
   public export
-  data Alts : Vect n Ty -> Vect m (p ** Vect p Ty) -> Ty -> Type where
+  data Alts : Vect n (Ty tn) -> Vect m (p ** Vect p (Ty tn)) -> Ty tn -> Type where
     Fail : Alts env [] t
     Alt : Expr (xs ++ env) t -> Alts env ctrs t -> Alts env ((p ** xs) :: ctrs) t
 

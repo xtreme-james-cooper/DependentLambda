@@ -5,6 +5,7 @@ import Lambda
 import LambdaOperations
 import Data.Vect
 import Index
+import Ty
 
 %default total
 

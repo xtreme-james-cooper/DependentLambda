@@ -4,17 +4,19 @@ import Data.Vect
 import Lambda
 import VectHelper
 import Index
+import Ty
 
 %default total
 
 export
-incrvs : (x : Fin (S n)) -> (tt : Ty) -> VarArgs env ts -> VarArgs (insertAt x tt env) ts
+incrvs : (x : Fin (S n)) -> (tt : Ty tn) -> VarArgs env ts ->
+    VarArgs (insertAt x tt env) ts
 incrvs x tt [] = []
 incrvs x tt (ix :: ixs) = indexInsert tt x ix :: incrvs x tt ixs
 
 mutual
   export
-  incr : (x : Fin (S n)) -> (tt : Ty) -> Expr env t -> Expr (insertAt x tt env) t
+  incr : (x : Fin (S n)) -> (tt : Ty tn) -> Expr env t -> Expr (insertAt x tt env) t
   incr x tt (Var ix) = Var (indexInsert tt x ix)
   incr x tt (Num n) = Num n
   incr x tt (App e1 e2) = App (incr x tt e1) (incr x tt e2)
@@ -25,7 +27,7 @@ mutual
   incr x tt (Case e as) = Case (incr x tt e) (incra x tt as)
 
   export
-  incra : (x : Fin (S n)) -> (tt : Ty) -> Alts env ctrs ts -> Alts (insertAt x tt env) ctrs ts
+  incra : (x : Fin (S n)) -> (tt : Ty tn) -> Alts env ctrs ts -> Alts (insertAt x tt env) ctrs ts
   incra x tt Fail = Fail
   incra {env = env} {ctrs = (p ** xs) :: ctrs} x tt (Alt e as) =
       let e' : Expr (xs ++ insertAt x tt env) ts =

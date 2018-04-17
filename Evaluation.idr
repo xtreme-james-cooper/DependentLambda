@@ -6,6 +6,7 @@ import LambdaOperations
 import Index
 import VectHelper
 import Iterate
+import Ty
 
 %default total
 
