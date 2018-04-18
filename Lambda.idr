@@ -23,8 +23,8 @@ mutual
     Constr : {ctrs : Vect m (n ** Vect n (Ty tn))} -> (tag : Fin m) ->
         VarArgs env (snd (index tag ctrs)) -> Expr env (DataTy ctrs)
     Case : Expr env (DataTy ctrs) -> Alts env ctrs t -> Expr env t
-    TyApp : Expr env t -> (t' : Ty tn) -> Expr (map (tsubst 0 t') env) (tsubst 0 t' t)
-    TyAbs : Expr (map (tyincr 0) env) (tyincr 0 t) -> Expr env t
+    TyApp : Expr env (ForallTy t) -> (t' : Ty tn) -> Expr env (tsubst FZ t' t)
+    TyAbs : Expr (map (tyincr FZ) env) t -> Expr env (ForallTy t)
 
   public export
   data Alts : Vect n (Ty tn) -> Vect m (p ** Vect p (Ty tn)) -> Ty tn -> Type where

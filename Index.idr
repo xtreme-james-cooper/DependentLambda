@@ -93,3 +93,8 @@ indexSubst x ix' ix {t' = t'} {env = env} with (compareFinToIndex x ix)
    indexSubst x ix' ix {t' = t'} {env = env} | Yes eq | Refl =
        rewrite indexInsertAt x t' env in ix'
   indexSubst x ix' ix {t' = t'} {env = env} | No neq = indexSubr _ x ix neq
+
+export
+indexMap : (f : a -> b) -> Index env t -> Index (map f env) (f t)
+indexMap f (IxZ a as) = IxZ (f a) (map f as)
+indexMap f (IxS b ix) = IxS (f b) (indexMap f ix)

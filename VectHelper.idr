@@ -33,3 +33,10 @@ appendInsert : (as : Vect n t) -> (bs : Vect m t) -> (x : Fin (S m)) -> (a : t) 
     as ++ insertAt x a bs = insertAt (extendFin n x) a (as ++ bs)
 appendInsert [] bs x c = Refl
 appendInsert (a :: as) bs x c = rewrite appendInsert as bs x c in Refl
+
+export
+insertAtMap : (f : a1 -> b1) -> (x : Fin (S n)) -> (a : a1) -> (as : Vect n a1) ->
+    map f (insertAt x a as) = insertAt x (f a) (map f as)
+insertAtMap f FZ a as = Refl
+insertAtMap f (FS x) a [] impossible
+insertAtMap f (FS x) a (a' :: as) = rewrite insertAtMap f x a as in Refl

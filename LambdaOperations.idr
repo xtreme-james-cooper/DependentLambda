@@ -25,6 +25,9 @@ mutual
   incr x tt (Fix e) = Fix (incr x tt e)
   incr x tt (Constr tag es) = Constr tag (incrvs x tt es)
   incr x tt (Case e as) = Case (incr x tt e) (incra x tt as)
+  incr x tt (TyApp e t') = TyApp (incr x tt e) t'
+  incr x tt (TyAbs e) {env = env} =
+      TyAbs (rewrite insertAtMap (tyincr FZ) x tt env in incr x (tyincr FZ tt) e)
 
   export
   incra : (x : Fin (S n)) -> (tt : Ty tn) -> Alts env ctrs ts -> Alts (insertAt x tt env) ctrs ts
@@ -76,6 +79,13 @@ mutual
   varSubst x ix' (Fix e) = Fix (varSubst x ix' e)
   varSubst x ix' (Constr tag es) = Constr tag (varsSubst x ix' es)
   varSubst x ix' (Case e as) = Case (varSubst x ix' e) (varSubsta x ix' as)
+  varSubst x ix' (TyApp e t) = TyApp (varSubst x ix' e) t
+  varSubst x ix' (TyAbs e) {t' = t'} {env = env} {t = ForallTy t} =
+      let ep : Expr (insertAt x (tyincr FZ t') (map (tyincr FZ) env)) t =
+          rewrite sym (insertAtMap (tyincr FZ) x t' env) in e
+      in let small_ep : Expr (insertAt x (tyincr FZ t') (map (tyincr FZ) env)) t =
+          assert_smaller (TyAbs e) ep
+      in TyAbs (varSubst x (indexMap (tyincr FZ) ix') small_ep)
 
   varSubsta : (x : Fin (S n)) -> Index env t' -> Alts (insertAt x t' env) ctrs t -> Alts env ctrs t
   varSubsta x ix' Fail = Fail
