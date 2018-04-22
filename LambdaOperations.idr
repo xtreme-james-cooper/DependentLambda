@@ -43,6 +43,7 @@ incrIsVal x IntVal = IntVal
 incrIsVal x ArrowVal = ArrowVal
 incrIsVal x DataVal = DataVal
 incrIsVal x (LetVal v) = LetVal (incrIsVal (FS x) v)
+incrIsVal x ForallVal = ForallVal
 
 export
 multiincr : Expr env t -> Expr (ts ++ env) t
@@ -107,3 +108,34 @@ export
 altEval : (x : Fin n) -> Alts env ctrs t -> VarArgs env (snd (index x ctrs)) -> Expr env t
 altEval FZ (Alt e as) es = multisubst es e
 altEval (FS x) (Alt e as) es = altEval x as es
+
+tyVarsSubst : (x : Fin (S tn)) -> (t' : Ty tn) -> VarArgs env ctr ->
+    VarArgs (map (tsubst x t') env) (ctrsubst x t' ctr)
+tyVarsSubst x t' [] = []
+tyVarsSubst x t' (v :: vs) = indexMap (tsubst x t') v :: tyVarsSubst x t' vs
+
+mutual
+  tySubst : (x : Fin (S tn)) -> (t' : Ty tn) -> Expr env t ->
+      Expr (map (tsubst x t') env) (tsubst x t' t)
+  tySubst x t' (Var ix) = Var (indexMap (tsubst x t') ix)
+  tySubst x t' (Num n) = Num n
+  tySubst x t' (App e1 e2) = App (tySubst x t' e1) (tySubst x t' e2)
+  tySubst x t' (Abs t1 e) = Abs (tsubst x t' t1) (tySubst x t' e)
+  tySubst x t' (Let e1 e2) = Let (tySubst x t' e1) (tySubst x t' e2)
+  tySubst x t' (Fix e) = Fix (tySubst x t' e)
+  tySubst x t' (Constr tag es) =
+      let esp = tyVarsSubst x t' es
+      in Constr tag ?argl_1
+  tySubst x t' (Case e as) = Case (tySubst x t' e) (tySubsta x t' as)
+  tySubst x t' (TyApp e t) = ?argl_9
+  tySubst x t' (TyAbs e) {env = env} =
+    TyAbs (rewrite sym (tsubstTincrList x t' env) in tySubst (FS x) (tyincr FZ t') e)
+
+  tySubsta : (x : Fin (S tn)) -> (t' : Ty tn) -> Alts env ctrs t ->
+      Alts (map (tsubst x t') env) (ctrssubst x t' ctrs) (tsubst x t' t)
+  tySubsta x t' Fail = Fail
+  tySubsta x t' (Alt {xs = xs} e as) {env = env} {t = t} =
+      let ep : Expr (ctrsubst x t' xs ++ map (tsubst x t') env) (tsubst x t' t) =
+          rewrite ctrsubstMap x t' xs in rewrite mapAppend (tsubst x t') xs env
+          in tySubst x t' e
+      in Alt ep (tySubsta x t' as)

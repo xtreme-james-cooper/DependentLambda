@@ -37,6 +37,7 @@ data IsValue : Expr env t -> Type where
   ArrowVal : IsValue (Abs t e)
   DataVal : IsValue (Constr tag es)
   LetVal : IsValue e2 -> IsValue (Let e1 e2)
+  ForallVal : IsValue (TyAbs e)
 
 public export
 data IsVarHeaded : Expr env t -> Index env t' -> Type where
