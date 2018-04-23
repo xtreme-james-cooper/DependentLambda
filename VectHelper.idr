@@ -1,33 +1,9 @@
 module VectHelper
 
 import Data.Vect
+import FinHelper
 
 %default total
-
-public export
-fincr : Fin (S n) -> Fin n -> Fin (S n)
-fincr FZ x = FS x
-fincr (FS ix) FZ = FZ
-fincr (FS ix) (FS x) = FS (fincr ix x)
-
-export
-fdecr : (x : Fin (S n)) -> {y : Fin (S n)} -> Not (x = y) -> Fin n
-fdecr {n = n} FZ {y = FZ} neq = void (neq Refl)
-fdecr {n = S n} FZ {y = FS y} neq = FZ
-fdecr {n = n} (FS x) {y = FZ} neq = x
-fdecr {n = S n} (FS x) {y = FS y} neq = FS (fdecr x {y = y} (\(Refl) => neq Refl))
-
-export
-extendFin : (m : Nat) -> Fin (S n) -> Fin (S (m + n))
-extendFin Z x = x
-extendFin (S m) x = FS (extendFin m x)
-
-export
-fdecrEq : (x, y : Fin (S n)) -> {neq, neq' : Not (x = y)} -> fdecr x neq = fdecr x neq'
-fdecrEq {n = n} FZ FZ {neq = neq} = void (neq Refl)
-fdecrEq {n = S n} FZ (FS y) = Refl
-fdecrEq {n = n} (FS x) FZ = Refl
-fdecrEq {n = S n} (FS x) (FS y) = cong {f = FS} (fdecrEq x y)
 
 export
 indexInsertAt : (x : Fin (S n)) -> (a : t) -> (env : Vect n t) -> index x (insertAt x a env) = a

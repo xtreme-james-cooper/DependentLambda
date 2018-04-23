@@ -5,6 +5,7 @@ import Lambda
 import VectHelper
 import Index
 import Ty
+import TyLemmas
 
 %default total
 
@@ -123,9 +124,8 @@ mutual
   tySubst x t' (Abs t1 e) = Abs (tsubst x t' t1) (tySubst x t' e)
   tySubst x t' (Let e1 e2) = Let (tySubst x t' e1) (tySubst x t' e2)
   tySubst x t' (Fix e) = Fix (tySubst x t' e)
-  tySubst x t' (Constr tag es) =
-      let esp = tyVarsSubst x t' es
-      in Constr tag ?argl_1
+  tySubst x t' (Constr {ctrs = ctrs} tag es) =
+      Constr tag (rewrite ctrSubstSnd x t' tag ctrs in tyVarsSubst x t' es)
   tySubst x t' (Case e as) = Case (tySubst x t' e) (tySubsta x t' as)
   tySubst x t' (TyApp e t) = ?argl_9
   tySubst x t' (TyAbs e) {env = env} =
