@@ -117,14 +117,14 @@ mutual
       (t2 : Ty (S tn)) -> (t : Ty (S (S tn))) -> y `FinLessEqThan` x ->
           tsubst y (tsubst x t1 t2) (tsubst (FS x) (tyincr y t1) t) = tsubst x t1 (tsubst (weaken y) t2 t)
   tsubstTsubst x y t1 t2 (TyVar z) le with (decEq z (FS x))
-    tsubstTsubst x y t1 t2 (TyVar (FS x)) le | Yes Refl with (decEq (FS x) (weaken y))
-      tsubstTsubst x y t1 t2 (TyVar (FS x)) le | Yes Refl | Yes eq' =
-          void (lessThanFS le eq')
-      tsubstTsubst x y t1 t2 (TyVar (FS x)) le | Yes Refl | No neq' with (decEq (fdecr (FS x) neq') x)
-        tsubstTsubst x y t1 t2 (TyVar (FS x)) le | Yes Refl | No neq' | Yes eq'' =
+    tsubstTsubst x y t1 t2 (TyVar z) le | Yes eq with (decEq z (weaken y))
+      tsubstTsubst x y t1 t2 (TyVar z) le | Yes eq | Yes eq' =
+          void (lessThanFS le (rewrite sym eq in eq'))
+      tsubstTsubst x y t1 t2 (TyVar z) le | Yes eq | No neq' with (decEq (fdecr z neq') x)
+        tsubstTsubst x y t1 t2 (TyVar z) le | Yes eq | No neq' | Yes eq'' =
             tsubstIncrSame y (tsubst x t1 t2) t1
-        tsubstTsubst x y t1 t2 (TyVar (FS x)) le | Yes Refl | No neq' | No neq'' =
-            void (neq'' (fdecrLessThan le neq'))
+        tsubstTsubst x y t1 t2 (TyVar z) le | Yes eq | No neq' | No neq'' =
+            void (neq'' (case eq of Refl => fdecrLessThan le neq'))
     tsubstTsubst x y t1 t2 (TyVar z) le | No neq with (decEq (fdecr z neq) y)
       tsubstTsubst x y t1 t2 (TyVar z) le | No neq | Yes eq' with (decEq z (weaken y))
         tsubstTsubst x y t1 t2 (TyVar z) le | No neq | Yes eq' | Yes eq'' = Refl
@@ -134,8 +134,10 @@ mutual
         tsubstTsubst x y t1 t2 (TyVar (weaken y)) le | No neq | No neq' | Yes Refl =
             void (neq' (fdecrLessThan2 le neq))
         tsubstTsubst x y t1 t2 (TyVar z) le | No neq | No neq' | No neq'' with (decEq (fdecr z neq'') x)
-          tsubstTsubst x y t1 t2 (TyVar z) le | No neq | No neq' | No neq'' | Yes eq''' = ?bluh
-          tsubstTsubst x y t1 t2 (TyVar z) le | No neq | No neq' | No neq'' | No neq''' = ?argh
+          tsubstTsubst (fdecr z neq'') y t1 t2 (TyVar z) le | No neq | No neq' | No neq'' | Yes Refl =
+              void (tsubstLemma2 neq'' neq le)
+          tsubstTsubst x y t1 t2 (TyVar z) le | No neq | No neq' | No neq'' | No neq''' =
+              rewrite fdecrSwap neq neq' neq'' neq''' le in Refl
   tsubstTsubst x y t1 t2 (ArrowTy tt1 tt2) le =
       rewrite tsubstTsubst x y t1 t2 tt1 le in rewrite tsubstTsubst x y t1 t2 tt2 le
       in Refl

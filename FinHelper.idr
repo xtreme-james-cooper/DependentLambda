@@ -106,6 +106,21 @@ fdecrLessThan2 ZLeX neq = Refl
 fdecrLessThan2 (SLeS le) neq = rewrite fdecrLessThan2 le (fneqDown neq) in Refl
 
 export
+fdecrSwap : (neq : Not (z = FS x)) -> (neq' : Not (fdecr z neq = y)) ->
+    (neq'' : Not (z = weaken y)) -> (neq''' : Not (fdecr z neq'' = x)) ->
+        y `FinLessEqThan` x ->
+            fdecr (fdecr z neq) neq' = fdecr (fdecr z neq'') neq'''
+fdecrSwap {x = x} {y = FZ} {z = FZ} neq neq' neq'' neq''' le = void (neq' Refl)
+fdecrSwap {x = FZ} {y = FS y} {z = FZ} neq neq' neq'' neq''' le = void (neq''' Refl)
+fdecrSwap {x = FS {k = S n} x} {y = FS y} {z = FZ} neq neq' neq'' neq''' le = Refl
+fdecrSwap {x = x} {y = FZ} {z = FS z} neq neq' neq'' neq''' le =
+    fdecrEq z (fneqDown neq) neq'''
+fdecrSwap {x = FZ} {y = FS y} {z = FS z} neq neq' neq'' neq''' le impossible
+fdecrSwap {x = FS {k = S n} x} {y = FS y} {z = FS z} neq neq' neq'' neq''' (SLeS le) =
+    rewrite fdecrSwap (fneqDown neq) (fneqDown neq') (fneqDown neq'') (fneqDown neq''') le
+    in Refl
+
+export
 tsubstLemma : (neq : Not (z = FS x)) -> Not (z = weaken y) -> y `FinLessEqThan` x ->
   Not (fdecr z neq = y)
 tsubstLemma {z = FZ} neq neq' ZLeX eq = neq' Refl
@@ -113,3 +128,12 @@ tsubstLemma {z = FS z} neq neq' ZLeX Refl impossible
 tsubstLemma {z = FZ} neq neq' (SLeS le) Refl impossible
 tsubstLemma {z = FS z} neq neq' (SLeS le) eq =
     tsubstLemma (fneqDown neq) (fneqDown neq') le (FSInjective _ _ eq)
+
+export
+tsubstLemma2 : (neq : Not (x = weaken y)) -> (neq' : Not (x = FS (fdecr x neq))) ->
+    Not (y `FinLessEqThan` fdecr x neq)
+tsubstLemma2 {x = FZ} {y = FZ} neq neq' le = void (neq Refl)
+tsubstLemma2 {x = FZ} {y = FS y} neq neq' le impossible
+tsubstLemma2 {x = FS x} {y = FZ} neq neq' le = void (neq' Refl)
+tsubstLemma2 {x = FS x} {y = FS y} neq neq' (SLeS le) =
+    tsubstLemma2 (fneqDown neq) (fneqDown neq') le
