@@ -37,7 +37,7 @@ mutual
   public export
   tsubst : Fin (S n) -> Ty n -> Ty (S n) -> Ty n
   tsubst ix t' (TyVar x) with (decEq x ix)
-    tsubst ix t' (TyVar ix) | Yes Refl = t'
+    tsubst ix t' (TyVar x) | Yes eq = t'
     tsubst ix t' (TyVar x) | No neq = TyVar (fdecr x neq)
   tsubst ix t' (ArrowTy t1 t2) = ArrowTy (tsubst ix t' t1) (tsubst ix t' t2)
   tsubst ix t' IntTy = IntTy

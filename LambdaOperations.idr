@@ -3,6 +3,7 @@ module LambdaOperations
 import Data.Vect
 import Lambda
 import VectHelper
+import FinHelper
 import Index
 import Ty
 import TyLemmas
@@ -127,7 +128,9 @@ mutual
   tySubst x t' (Constr {ctrs = ctrs} tag es) =
       Constr tag (rewrite ctrSubstSnd x t' tag ctrs in tyVarsSubst x t' es)
   tySubst x t' (Case e as) = Case (tySubst x t' e) (tySubsta x t' as)
-  tySubst x t' (TyApp e t) = ?argl_9
+  tySubst x t' (TyApp {t = tt} e t) =
+      rewrite sym (tsubstTsubst x FZ t' t tt ZLeX)
+      in TyApp (tySubst x t' e) (tsubst x t' t)
   tySubst x t' (TyAbs e) {env = env} =
     TyAbs (rewrite sym (tsubstTincrList x t' env) in tySubst (FS x) (tyincr FZ t') e)
 
