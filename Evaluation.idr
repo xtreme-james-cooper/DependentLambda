@@ -26,7 +26,8 @@ data Eval : Expr env t -> Expr env t -> Type where
   EvCase2 : Eval (Case (Constr tag es) as) (altEval tag as es)
   EvCaseLet : IsValue e2 -> Eval (Case (Let e1 e2) as) (Let e1 (Case e2 (incra FZ _ as)))
   EvTyApp1 : Eval e e' -> Eval (TyApp e t) (TyApp e' t)
-  EvTyApp2 : Eval (TyApp (TyAbs e) t) e'
+  EvTyApp2 : Eval (TyApp (TyAbs e) t) (tySubst t e)
+  EvTyAppLet : IsValue e2 -> Eval (TyApp (Let e1 e2) t) (Let e1 (TyApp e2 t))
 
 data Progress : Expr env t -> Type where
   Value : IsValue e -> Progress e
@@ -37,7 +38,6 @@ progress' : (e : Expr env t) -> Progress e
 progress' (Var ix) = VarHeaded ix VarVar
 progress' {t = IntTy} (Num n) = Value IntVal
 progress' (App e1 e2) with (progress' e1)
-  progress' (App e1 e2) | Value v = ?argl
   progress' (App (Abs t1 e1) e2) | Value ArrowVal = Step (Let e2 e1) EvApp2
   progress' (App (Let e11 e12) e2) | Value (LetVal v) =
       Step (Let e11 (App e12 (incr FZ _ e2))) (EvAppLet v)
@@ -71,10 +71,11 @@ progress' (Case e as) with (progress' e)
   progress' (Case e as) | Step e' ev = Step (Case e' as) (EvCase1 ev)
   progress' (Case e as) | VarHeaded ix vh = VarHeaded ix (CaseVar vh)
 progress' (TyApp e t) with (progress' e)
-  progress' (TyApp (Let e1 e2) t) | Value (LetVal x) = ?arg_4
-  progress' (TyApp (TyAbs e) t) | Value ForallVal = ?arg_5
-  progress' (TyApp e t) | Step e' ev = ?arg_2
-  progress' (TyApp e t) | VarHeaded ix vh = ?arg_3
+  progress' (TyApp (Let e1 e2) t) | Value (LetVal v) =
+      Step (Let e1 (TyApp e2 t)) (EvTyAppLet v)
+  progress' (TyApp (TyAbs e) t) | Value ForallVal = Step (tySubst t e) EvTyApp2
+  progress' (TyApp e t) | Step e' ev = Step (TyApp e' t) (EvTyApp1 ev)
+  progress' (TyApp e t) | VarHeaded ix vh = VarHeaded ix (TyAppVar vh)
 progress' {t = ForallTy t} (TyAbs e) = Value ForallVal
 
 export

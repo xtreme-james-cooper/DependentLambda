@@ -47,3 +47,4 @@ data IsVarHeaded : Expr env t -> Index env t' -> Type where
   LetVarR : IsVarHeaded e2 (IxS b ix) -> IsVarHeaded (Let e1 e2) ix
   FixVar : IsVarHeaded e ix -> IsVarHeaded (Fix e) ix
   CaseVar : IsVarHeaded e ix -> IsVarHeaded (Case e as) ix
+  TyAppVar : IsVarHeaded e ix -> IsVarHeaded (TyApp e t) ix

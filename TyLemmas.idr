@@ -64,6 +64,13 @@ mutual
   tsubstIncrSameCtr x t' (t :: ts) =
       rewrite tsubstIncrSame x t' t in rewrite tsubstIncrSameCtr x t' ts in Refl
 
+export
+tsubstIncrSameList : (x : Fin (S n)) -> (t' : Ty n) -> (ts : Vect k (Ty n)) ->
+    map (tsubst x t') (map (tyincr x) ts) = ts
+tsubstIncrSameList x t' [] = Refl
+tsubstIncrSameList x t' (t :: ts) =
+    rewrite tsubstIncrSame x t' t in rewrite tsubstIncrSameList x t' ts in Refl
+
 mutual
   tsubstTincr : (x : Fin (S n)) -> (y : Fin (S n)) -> (t' : Ty n) -> (t : Ty (S n)) ->
       y `FinLessEqThan` x ->
