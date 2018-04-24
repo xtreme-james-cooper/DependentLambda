@@ -27,7 +27,7 @@ mutual
   incr x tt (Fix e) = Fix (incr x tt e)
   incr x tt (Constr tag es) = Constr tag (incrvs x tt es)
   incr x tt (Case e as) = Case (incr x tt e) (incra x tt as)
-  incr x tt (TyApp e t') = TyApp (incr x tt e) t'
+  incr x tt (TyApp e t' eq) = TyApp (incr x tt e) t' eq
   incr x tt (TyAbs e) {env = env} =
       TyAbs (rewrite insertAtMap (tyincr FZ) x tt env in incr x (tyincr FZ tt) e)
 
@@ -67,7 +67,7 @@ subst e' (Let e1 e2) v (LetVarR vh2) =
     Let e1 (subst (incr FZ _ e') e2 (incrIsVal FZ v) vh2)
 subst e' (Fix e) v (FixVar vh) = Fix (subst e' e v vh)
 subst e' (Case e as) v (CaseVar vh) = Case (subst e' e v vh) as
-subst e' (TyApp e t) v (TyAppVar vh) = TyApp (subst e' e v vh) t
+subst e' (TyApp e t eq) v (TyAppVar vh) = TyApp (subst e' e v vh) t eq
 
 varsSubst : (x : Fin (S n)) -> Index env t' -> VarArgs (insertAt x t' env) ts -> VarArgs env ts
 varsSubst x ix' [] = []
@@ -83,7 +83,7 @@ mutual
   varSubst x ix' (Fix e) = Fix (varSubst x ix' e)
   varSubst x ix' (Constr tag es) = Constr tag (varsSubst x ix' es)
   varSubst x ix' (Case e as) = Case (varSubst x ix' e) (varSubsta x ix' as)
-  varSubst x ix' (TyApp e t) = TyApp (varSubst x ix' e) t
+  varSubst x ix' (TyApp e t eq) = TyApp (varSubst x ix' e) t eq
   varSubst x ix' (TyAbs e) {t' = t'} {env = env} {t = ForallTy t} =
       let ep : Expr (insertAt x (tyincr FZ t') (map (tyincr FZ) env)) t =
           rewrite sym (insertAtMap (tyincr FZ) x t' env) in e
@@ -129,11 +129,10 @@ mutual
   tySubst' x t' (Constr {ctrs = ctrs} tag es) =
       Constr tag (rewrite ctrSubstSnd x t' tag ctrs in tyVarsSubst x t' es)
   tySubst' x t' (Case e as) = Case (tySubst' x t' e) (tySubsta' x t' as)
-  tySubst' x t' (TyApp {t = tt} e t) =
-      rewrite sym (tsubstTsubst x FZ t' t tt ZLeX)
-      in TyApp (tySubst' x t' e) (tsubst x t' t)
+  tySubst' x t' (TyApp {t = tt} e t Refl) =
+      TyApp (tySubst' x t' e) (tsubst x t' t) (sym (tsubstTsubst x FZ t' t tt ZLeX))
   tySubst' x t' (TyAbs e) {env = env} =
-    TyAbs (rewrite sym (tsubstTincrList x t' env) in tySubst' (FS x) (tyincr FZ t') e)
+      TyAbs (rewrite sym (tsubstTincrList x t' env) in tySubst' (FS x) (tyincr FZ t') e)
 
   tySubsta' : (x : Fin (S tn)) -> (t' : Ty tn) -> Alts env ctrs t ->
       Alts (map (tsubst x t') env) (ctrssubst x t' ctrs) (tsubst x t' t)

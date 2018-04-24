@@ -23,7 +23,7 @@ mutual
     Constr : {ctrs : Vect m (n ** Vect n (Ty tn))} -> (tag : Fin m) ->
         VarArgs env (snd (index tag ctrs)) -> Expr env (DataTy ctrs)
     Case : Expr env (DataTy ctrs) -> Alts env ctrs t -> Expr env t
-    TyApp : Expr env (ForallTy t) -> (t' : Ty tn) -> Expr env (tsubst FZ t' t)
+    TyApp : Expr env (ForallTy t) -> (t' : Ty tn) -> tt = tsubst FZ t' t -> Expr env tt
     TyAbs : Expr (map (tyincr FZ) env) t -> Expr env (ForallTy t)
 
   public export
@@ -47,4 +47,4 @@ data IsVarHeaded : Expr env t -> Index env t' -> Type where
   LetVarR : IsVarHeaded e2 (IxS b ix) -> IsVarHeaded (Let e1 e2) ix
   FixVar : IsVarHeaded e ix -> IsVarHeaded (Fix e) ix
   CaseVar : IsVarHeaded e ix -> IsVarHeaded (Case e as) ix
-  TyAppVar : IsVarHeaded e ix -> IsVarHeaded (TyApp e t) ix
+  TyAppVar : IsVarHeaded e ix -> IsVarHeaded (TyApp e t eq) ix
