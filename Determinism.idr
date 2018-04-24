@@ -11,6 +11,35 @@ import DeterminismLemmas
 %default total
 
 deterministicEval : Eval e e' -> Eval e e'' -> e' = e''
+deterministicEval (EvPrim1 ev1) (EvPrim1 ev2) =
+    rewrite deterministicEval ev1 ev2 in Refl
+deterministicEval (EvPrim1 ev1) (EvPrim2 v21 ev22) = void (valNoEval v21 ev1)
+deterministicEval (EvPrim1 ev1) EvPrim3 = void (valNoEval IntVal ev1)
+deterministicEval (EvPrim1 (EvLet1 ev12)) (EvPrimLetL v21 v22) = void (valNoEval v21 ev12)
+deterministicEval (EvPrim1 (EvLet2 vh12 ev12)) (EvPrimLetL v21 v22) = void (valNotVarHeaded v21 vh12)
+deterministicEval (EvPrim1 (EvLet3 vh12 v12)) (EvPrimLetL v21 v22) = void (valNotVarHeaded v21 vh12)
+deterministicEval (EvPrim1 ev1) (EvPrimLetR v22) = void (valNoEval IntVal ev1)
+deterministicEval (EvPrim2 v11 ev12) (EvPrim1 ev2) = void (valNoEval v11 ev2)
+deterministicEval (EvPrim2 v11 ev12) (EvPrim2 v21 ev22) =
+    rewrite deterministicEval ev12 ev22 in Refl
+deterministicEval (EvPrim2 v11 ev12) EvPrim3 = void (valNoEval IntVal ev12)
+deterministicEval (EvPrim2 v11 ev12) (EvPrimLetL v21 v22) = void (valNoEval v22 ev12)
+deterministicEval (EvPrim2 v11 (EvLet1 ev12)) (EvPrimLetR v22) = void (valNoEval v22 ev12)
+deterministicEval (EvPrim2 v11 (EvLet2 vh12 ev12)) (EvPrimLetR v22) = void (valNotVarHeaded v22 vh12)
+deterministicEval (EvPrim2 v11 (EvLet3 vh12 v12)) (EvPrimLetR v22) = void (valNotVarHeaded v22 vh12)
+deterministicEval EvPrim3 (EvPrim1 ev2) = void (valNoEval IntVal ev2)
+deterministicEval EvPrim3 (EvPrim2 v21 ev22) = void (valNoEval IntVal ev22)
+deterministicEval EvPrim3 EvPrim3 = Refl
+deterministicEval (EvPrimLetL v11 v12) (EvPrim1 (EvLet1 ev2)) = void (valNoEval v11 ev2)
+deterministicEval (EvPrimLetL v11 v12) (EvPrim1 (EvLet2 vh2 ev2)) = void (valNotVarHeaded v11 vh2)
+deterministicEval (EvPrimLetL v11 v12) (EvPrim1 (EvLet3 vh2 v2)) = void (valNotVarHeaded v11 vh2)
+deterministicEval (EvPrimLetL v11 v12) (EvPrim2 v21 ev22) = void (valNoEval v12 ev22)
+deterministicEval (EvPrimLetL v11 v12) (EvPrimLetL v21 v22) = Refl
+deterministicEval (EvPrimLetR v12) (EvPrim1 ev2) = void (valNoEval IntVal ev2)
+deterministicEval (EvPrimLetR v12) (EvPrim2 v21 (EvLet1 ev22)) = void (valNoEval v12 ev22)
+deterministicEval (EvPrimLetR v12) (EvPrim2 v21 (EvLet2 vh22 ev22)) = void (valNotVarHeaded v12 vh22)
+deterministicEval (EvPrimLetR v12) (EvPrim2 v21 (EvLet3 vh22 v22)) = void (valNotVarHeaded v12 vh22)
+deterministicEval (EvPrimLetR v12) (EvPrimLetR v22) = Refl
 deterministicEval (EvApp1 ev1) (EvApp1 ev2) = rewrite deterministicEval ev1 ev2 in Refl
 deterministicEval (EvApp1 ev1) EvApp2 = void (valNoEval ArrowVal ev1)
 deterministicEval (EvApp1 (EvLet1 ev1)) (EvAppLet v2) = void (valNoEval v2 ev1)

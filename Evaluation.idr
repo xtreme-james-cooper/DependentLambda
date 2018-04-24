@@ -12,6 +12,13 @@ import Ty
 
 public export
 data Eval : Expr env t -> Expr env t -> Type where
+  EvPrim1 : Eval e1 e1' -> Eval (Prim f e1 e2) (Prim f e1' e2)
+  EvPrim2 : IsValue e1 -> Eval e2 e2' -> Eval (Prim f e1 e2) (Prim f e1 e2')
+  EvPrim3 : Eval (Prim f (Num n1) (Num n2)) (Num (f n1 n2))
+  EvPrimLetL : IsValue e12 -> IsValue e2 ->
+      Eval (Prim f (Let e11 e12) e2) (Let e11 (Prim f e12 (incr FZ _ e2)))
+  EvPrimLetR : IsValue e22 ->
+      Eval (Prim f (Num n1) (Let e21 e22)) (Let e21 (Prim f (incr FZ _ (Num n1)) e22))
   EvApp1 : Eval e1 e1' -> Eval (App e1 e2) (App e1' e2)
   EvApp2 : Eval (App (Abs t1 e1) e2) (Let e2 e1)
   EvAppLet : IsValue e12 -> Eval (App (Let e11 e12) e2) (Let e11 (App e12 (incr FZ _ e2)))
@@ -37,6 +44,22 @@ data Progress : Expr env t -> Type where
 progress' : (e : Expr env t) -> Progress e
 progress' (Var ix) = VarHeaded ix VarVar
 progress' {t = IntTy} (Num n) = Value IntVal
+progress' {t = IntTy} (Prim f e1 e2) with (progress' e1)
+  progress' {t = IntTy} (Prim f e1 e2) | Value v with (progress' e2)
+    progress' {t = IntTy} (Prim f (Num n1) (Num n2)) | Value IntVal | Value IntVal =
+        Step (Num (f n1 n2)) EvPrim3
+    progress' {t = IntTy} (Prim f (Num n1) (Let e21 e22)) | Value IntVal | Value (LetVal v2) =
+        Step (Let e21 (Prim f (incr FZ _ (Num n1)) e22)) (EvPrimLetR v2)
+    progress' {t = IntTy} (Prim f (Let e11 e12) e2) | Value (LetVal v) | Value v2 =
+        Step (Let e11 (Prim f e12 (incr FZ _ e2))) (EvPrimLetL v v2)
+    progress' {t = IntTy} (Prim f e1 e2) | Value v | Step e2' ev =
+        Step (Prim f e1 e2') (EvPrim2 v ev)
+    progress' {t = IntTy} (Prim f e1 e2) | Value v | VarHeaded ix vh =
+        VarHeaded ix (PrimVarR v vh)
+  progress' {t = IntTy} (Prim f e1 e2) | Step e1' ev =
+      Step (Prim f e1' e2) (EvPrim1 ev)
+  progress' {t = IntTy} (Prim f e1 e2) | VarHeaded ix vh =
+      VarHeaded ix (PrimVarL vh)
 progress' (App e1 e2) with (progress' e1)
   progress' (App (Abs t1 e1) e2) | Value ArrowVal = Step (Let e2 e1) EvApp2
   progress' (App (Let e11 e12) e2) | Value (LetVal v) =

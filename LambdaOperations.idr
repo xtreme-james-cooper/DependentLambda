@@ -21,6 +21,7 @@ mutual
   incr : (x : Fin (S n)) -> (tt : Ty tn) -> Expr env t -> Expr (insertAt x tt env) t
   incr x tt (Var ix) = Var (indexInsert tt x ix)
   incr x tt (Num n) = Num n
+  incr x tt (Prim f e1 e2) = Prim f (incr x tt e1) (incr x tt e2)
   incr x tt (App e1 e2) = App (incr x tt e1) (incr x tt e2)
   incr x tt (Abs t1 e) = Abs t1 (incr (FS x) tt e)
   incr x tt (Let e1 e2) = Let (incr x tt e1) (incr (FS x) tt e2)
@@ -61,6 +62,8 @@ export
 subst : {ix : Index env t'} -> (e' : Expr env t') -> (e : Expr env t) ->
     IsValue e' -> IsVarHeaded e ix -> Expr env t
 subst e' (Var ix) v VarVar = e'
+subst e' (Prim f e1 e2) v (PrimVarL vh) = Prim f (subst e' e1 v vh) e2
+subst e' (Prim f e1 e2) v (PrimVarR v' vh) = Prim f e1 (subst e' e2 v vh)
 subst e' (App e1 e2) v (AppVar vh) = App (subst e' e1 v vh) e2
 subst e' (Let e1 e2) v (LetVarL vh2 vh1) = Let (subst e' e1 v vh1) e2
 subst e' (Let e1 e2) v (LetVarR vh2) =
@@ -77,6 +80,7 @@ mutual
   varSubst : (x : Fin (S n)) -> Index env t' -> Expr (insertAt x t' env) t -> Expr env t
   varSubst x ix' (Var ix) = Var (indexSubst x ix' ix)
   varSubst x ix' (Num n) = Num n
+  varSubst x ix' (Prim f e1 e2) = Prim f (varSubst x ix' e1) (varSubst x ix' e2)
   varSubst x ix' (App e1 e2) = App (varSubst x ix' e1) (varSubst x ix' e2)
   varSubst x ix' (Abs t1 e) = Abs t1 (varSubst (FS x) (IxS _ ix') e)
   varSubst x ix' (Let e1 e2) = Let (varSubst x ix' e1) (varSubst (FS x) (IxS _ ix') e2)
@@ -122,6 +126,7 @@ mutual
       Expr (map (tsubst x t') env) (tsubst x t' t)
   tySubst' x t' (Var ix) = Var (indexMap (tsubst x t') ix)
   tySubst' x t' (Num n) = Num n
+  tySubst' x t' (Prim f e1 e2) = Prim f (tySubst' x t' e1) (tySubst' x t' e2)
   tySubst' x t' (App e1 e2) = App (tySubst' x t' e1) (tySubst' x t' e2)
   tySubst' x t' (Abs t1 e) = Abs (tsubst x t' t1) (tySubst' x t' e)
   tySubst' x t' (Let e1 e2) = Let (tySubst' x t' e1) (tySubst' x t' e2)
