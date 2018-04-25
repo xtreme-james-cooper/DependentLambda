@@ -13,31 +13,34 @@ import Ty
 public export
 data Eval : Expr env t -> Expr env t -> Type where
   EvPrim1 : Eval e1 e1' -> Eval (Prim f e1 e2) (Prim f e1' e2)
-  EvPrim2 : IsValue e1 -> Eval e2 e2' -> Eval (Prim f e1 e2) (Prim f e1 e2')
+  EvPrim2 : IsValue e1 b -> Eval e2 e2' -> Eval (Prim f e1 e2) (Prim f e1 e2')
   EvPrim3 : Eval (Prim f (Num n1) (Num n2)) (Num (f n1 n2))
-  EvPrimLetL : IsValue e12 -> IsValue e2 ->
+  EvPrimLetL : IsValue e12 b -> IsValue e2 b' ->
       Eval (Prim f (Let e11 e12) e2) (Let e11 (Prim f e12 (incr FZ _ e2)))
-  EvPrimLetR : IsValue e22 ->
+  EvPrimLetR : IsValue e22 b ->
       Eval (Prim f (Num n1) (Let e21 e22)) (Let e21 (Prim f (incr FZ _ (Num n1)) e22))
   EvApp1 : Eval e1 e1' -> Eval (App e1 e2) (App e1' e2)
   EvApp2 : Eval (App (Abs t1 e1) e2) (Let e2 e1)
-  EvAppLet : IsValue e12 -> Eval (App (Let e11 e12) e2) (Let e11 (App e12 (incr FZ _ e2)))
+  EvAppLet : IsValue e12 b ->
+      Eval (App (Let e11 e12) e2) (Let e11 (App e12 (incr FZ _ e2)))
   EvLet1 : Eval e2 e2' -> Eval (Let e1 e2) (Let e1 e2')
   EvLet2 : IsVarHeaded e2 (IxZ t env) -> Eval e1 e1' -> Eval (Let e1 e2) (Let e1' e2)
-  EvLet3 : (vh : IsVarHeaded e2 (IxZ t env)) -> (v : IsValue e1) ->
+  EvLet3 : (vh : IsVarHeaded e2 (IxZ t env)) -> (v : IsValue e1 True) ->
       Eval (Let e1 e2) (Let e1 (subst (incr FZ _ e1) e2 (incrIsVal FZ v) vh))
+  EvLetLet : (vh : IsVarHeaded e2 (IxZ t env)) -> (v : IsValue e12 b) ->
+      Eval (Let (Let e11 e12) e2) (Let e11 (Let e12 (incr (FS FZ) _ e2)))
   EvFix1 : Eval e e' -> Eval (Fix e) (Fix e')
   EvFix2 : Eval (Fix (Abs t1 e1)) (Let (Fix (Abs t1 e1)) e1)
-  EvFixLet : IsValue e2 -> Eval (Fix (Let e1 e2)) (Let e1 (Fix e2))
+  EvFixLet : IsValue e2 b -> Eval (Fix (Let e1 e2)) (Let e1 (Fix e2))
   EvCase1 : Eval e e' -> Eval (Case e as) (Case e' as)
   EvCase2 : Eval (Case (Constr tag es) as) (altEval tag as es)
-  EvCaseLet : IsValue e2 -> Eval (Case (Let e1 e2) as) (Let e1 (Case e2 (incra FZ _ as)))
+  EvCaseLet : IsValue e2 b -> Eval (Case (Let e1 e2) as) (Let e1 (Case e2 (incra FZ _ as)))
   EvTyApp1 : Eval e e' -> Eval (TyApp e t eq) (TyApp e' t eq)
   EvTyApp2 : Eval (TyApp (TyAbs e) t eq) (tySubst t e)
-  EvTyAppLet : IsValue e2 -> Eval (TyApp (Let e1 e2) t eq) (Let e1 (TyApp e2 t eq))
+  EvTyAppLet : IsValue e2 b -> Eval (TyApp (Let e1 e2) t eq) (Let e1 (TyApp e2 t eq))
 
 data Progress : Expr env t -> Type where
-  Value : IsValue e -> Progress e
+  Value : IsValue e b -> Progress e
   Step : (e' : Expr env t) -> Eval e e' -> Progress e
   VarHeaded : (ix : Index env t') -> IsVarHeaded e ix -> Progress e
 
@@ -71,8 +74,10 @@ progress' (Let e1 e2) with (progress' e2)
   progress' (Let e1 e2) | Value v = Value (LetVal v)
   progress' (Let e1 e2) | Step e2' ev = Step (Let e1 e2') (EvLet1 ev)
   progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh with (progress' e1)
-    progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Value v =
+    progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Value {b = True} v =
         Step (Let e1 (subst (incr FZ _ e1) e2 (incrIsVal FZ v) vh)) (EvLet3 vh v)
+    progress' (Let (Let e11 e12) e2) | VarHeaded (IxZ t1 env) vh | Value {b = False} (LetVal v) =
+        Step (Let e11 (Let e12 (incr (FS FZ) _ e2))) (EvLetLet vh v)
     progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Step e1' ev =
         Step (Let e1' e2) (EvLet2 vh ev)
     progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | VarHeaded ix vh' =
@@ -102,16 +107,18 @@ progress' (TyApp e t eq) with (progress' e)
   progress' (TyApp e t eq) | VarHeaded ix vh = VarHeaded ix (TyAppVar vh)
 progress' {t = ForallTy t} (TyAbs e) = Value ForallVal
 
+
 export
-progress : (e : Expr [] t) -> Either (IsValue e) (e' ** Eval e e')
+progress : (e : Expr [] t) -> Either (b ** IsValue e b) (e' ** Eval e e')
 progress e with (progress' e)
-  progress e | Value v = Left v
+  progress e | Value {b = b} v = Left (b ** v)
   progress e | Step e' ev = Right (e' ** ev)
   progress e | VarHeaded ix vh impossible
 
 export partial
-evaluate : (e : Expr [] t) -> (e' : Expr [] t ** (Iterate Eval e e', IsValue e'))
+evaluate : (e : Expr [] t) -> (b ** e' ** (Iterate Eval e e', IsValue e' b))
 evaluate e with (progress e)
-  evaluate e | Left v = (e ** (IterRefl, v))
+  evaluate e | Left (b ** v) = (b ** e ** (IterRefl, v))
   evaluate e | Right (e' ** ev) with (evaluate e')
-    evaluate e | Right (e' ** ev) | (e'' ** (evs, v)) = (e'' ** (IterStep ev evs, v))
+    evaluate e | Right (e' ** ev) | (b ** e'' ** (evs, v)) =
+        (b ** e'' ** (IterStep ev evs, v))

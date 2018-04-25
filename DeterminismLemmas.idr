@@ -10,7 +10,7 @@ import Ty
 %default total
 
 export
-valSame : (v1 : IsValue e) -> (v2 : IsValue e) -> v1 = v2
+valSame : (v1 : IsValue e b1) -> (v2 : IsValue e b2) -> v1 = v2
 valSame IntVal IntVal = Refl
 valSame ArrowVal ArrowVal = Refl
 valSame DataVal DataVal = Refl
@@ -19,7 +19,7 @@ valSame (LetVal v1) (LetVal v2) with (valSame v1 v2)
 valSame ForallVal ForallVal = Refl
 
 export
-valNotVarHeaded : IsValue e -> Not (IsVarHeaded e ix)
+valNotVarHeaded : IsValue e b -> Not (IsVarHeaded e ix)
 valNotVarHeaded IntVal vh impossible
 valNotVarHeaded ArrowVal vh impossible
 valNotVarHeaded DataVal vh impossible
@@ -95,9 +95,12 @@ mutual
   varHeadedNoEval (LetVarL vh2 vh1) (EvLet1 ev) = varHeadedNoEval vh2 ev
   varHeadedNoEval (LetVarL vh2 vh1) (EvLet2 vh ev) = varHeadedNoEval vh1 ev
   varHeadedNoEval (LetVarL vh2 vh1) (EvLet3 vh v) = valNotVarHeaded v vh1
+  varHeadedNoEval (LetVarL vh2 (LetVarL vh12 vh11)) (EvLetLet vh v) = valNotVarHeaded v vh12
+  varHeadedNoEval (LetVarL vh2 (LetVarR vh12)) (EvLetLet vh v) = valNotVarHeaded v vh12
   varHeadedNoEval (LetVarR vh2) (EvLet1 ev) = varHeadedNoEval vh2 ev
   varHeadedNoEval (LetVarR vh2) (EvLet2 vh ev) = varHeadedDiff vh vh2
   varHeadedNoEval (LetVarR vh2) (EvLet3 vh v) = varHeadedDiff vh vh2
+  varHeadedNoEval (LetVarR vh2) (EvLetLet vh v) = varHeadedDiff vh vh2
   varHeadedNoEval (FixVar vh) (EvFix1 ev) = varHeadedNoEval vh ev
   varHeadedNoEval (FixVar vh) EvFix2 impossible
   varHeadedNoEval (FixVar (LetVarL vh2 vh1)) (EvFixLet v) = valNotVarHeaded v vh2
@@ -112,11 +115,12 @@ mutual
   varHeadedNoEval (TyAppVar (LetVarR vh2)) (EvTyAppLet v) = valNotVarHeaded v vh2
 
   export
-  valNoEval : IsValue e -> Not (Eval e e')
+  valNoEval : IsValue e b -> Not (Eval e e')
   valNoEval IntVal ev impossible
   valNoEval ArrowVal ev impossible
   valNoEval DataVal ev impossible
   valNoEval (LetVal v1) (EvLet1 ev) = valNoEval v1 ev
   valNoEval (LetVal v1) (EvLet2 vh ev) = valNotVarHeaded v1 vh
   valNoEval (LetVal v1) (EvLet3 vh v2) = valNotVarHeaded v1 vh
+  valNoEval (LetVal v1) (EvLetLet vh v2) = valNotVarHeaded v1 vh
   valNoEval ForallVal ev impossible

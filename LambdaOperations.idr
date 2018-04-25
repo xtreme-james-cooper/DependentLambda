@@ -41,12 +41,12 @@ mutual
       in Alt e' (incra x tt as)
 
 export
-incrIsVal : (x : Fin (S n)) -> IsValue e -> IsValue (incr x t e)
+incrIsVal : (x : Fin (S n)) -> IsValue e b -> IsValue (incr x t e) b
 incrIsVal x IntVal = IntVal
 incrIsVal x ArrowVal = ArrowVal
 incrIsVal x DataVal = DataVal
-incrIsVal x (LetVal v) = LetVal (incrIsVal (FS x) v)
 incrIsVal x ForallVal = ForallVal
+incrIsVal x (LetVal v) = LetVal (incrIsVal (FS x) v)
 
 export
 multiincr : Expr env t -> Expr (ts ++ env) t
@@ -60,7 +60,7 @@ multiincra {ts' = t :: ts'} as = incra FZ t (multiincra as)
 
 export
 subst : {ix : Index env t'} -> (e' : Expr env t') -> (e : Expr env t) ->
-    IsValue e' -> IsVarHeaded e ix -> Expr env t
+    IsValue e' True -> IsVarHeaded e ix -> Expr env t
 subst e' (Var ix) v VarVar = e'
 subst e' (Prim f e1 e2) v (PrimVarL vh) = Prim f (subst e' e1 v vh) e2
 subst e' (Prim f e1 e2) v (PrimVarR v' vh) = Prim f e1 (subst e' e2 v vh)

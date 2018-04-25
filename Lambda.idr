@@ -33,18 +33,18 @@ mutual
     Alt : Expr (xs ++ env) t -> Alts env ctrs t -> Alts env ((p ** xs) :: ctrs) t
 
 public export
-data IsValue : Expr env t -> Type where
-  IntVal : IsValue (Num x)
-  ArrowVal : IsValue (Abs t e)
-  DataVal : IsValue (Constr tag es)
-  LetVal : IsValue e2 -> IsValue (Let e1 e2)
-  ForallVal : IsValue (TyAbs e)
+data IsValue : Expr env t -> Bool -> Type where
+  IntVal : IsValue (Num x) True
+  ArrowVal : IsValue (Abs t e) True
+  DataVal : IsValue (Constr tag es) True
+  ForallVal : IsValue (TyAbs e) True
+  LetVal : IsValue e2 b -> IsValue (Let e1 e2) False
 
 public export
 data IsVarHeaded : Expr env t -> Index env t' -> Type where
   VarVar : IsVarHeaded (Var ix) ix
   PrimVarL : IsVarHeaded e1 ix -> IsVarHeaded (Prim f e1 e2) ix
-  PrimVarR : IsValue e1 -> IsVarHeaded e2 ix -> IsVarHeaded (Prim f e1 e2) ix
+  PrimVarR : IsValue e1 b -> IsVarHeaded e2 ix -> IsVarHeaded (Prim f e1 e2) ix
   AppVar : IsVarHeaded e1 ix -> IsVarHeaded (App e1 e2) ix
   LetVarL : IsVarHeaded e2 (IxZ t1 env) -> IsVarHeaded e1 ix -> IsVarHeaded (Let e1 e2) ix
   LetVarR : IsVarHeaded e2 (IxS b ix) -> IsVarHeaded (Let e1 e2) ix
