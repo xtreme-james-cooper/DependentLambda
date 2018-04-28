@@ -35,6 +35,7 @@ mutual
   varHeadedSameIndex (PrimVarL vh1) (PrimVarR v2 vh2) = void (valNotVarHeaded v2 vh1)
   varHeadedSameIndex (PrimVarR v1 vh1) (PrimVarL vh2) = void (valNotVarHeaded v1 vh2)
   varHeadedSameIndex (PrimVarR v1 vh1) (PrimVarR v2 vh2) = varHeadedSameIndex vh1 vh2
+  varHeadedSameIndex (IsZeroVar vh1) (IsZeroVar vh2) = varHeadedSameIndex vh1 vh2
   varHeadedSameIndex (AppVar vh1) (AppVar vh2) = varHeadedSameIndex vh1 vh2
   varHeadedSameIndex (LetVarL vh12 vh11) (LetVarL vh22 vh21) = varHeadedSameIndex vh11 vh21
   varHeadedSameIndex (LetVarL vh12 vh11) (LetVarR vh22) = void (varHeadedDiff vh12 vh22)
@@ -58,6 +59,8 @@ varHeadedSame (PrimVarL vh1) (PrimVarR v2 vh2) = void (valNotVarHeaded v2 vh1)
 varHeadedSame (PrimVarR v1 vh1) (PrimVarL vh2) = void (valNotVarHeaded v1 vh2)
 varHeadedSame (PrimVarR v1 vh1) (PrimVarR v2 vh2) with (valSame v1 v2, varHeadedSame vh1 vh2)
   varHeadedSame (PrimVarR v1 vh1) (PrimVarR v1 vh1) | (Refl, Refl) = Refl
+varHeadedSame (IsZeroVar vh1) (IsZeroVar vh2) with (varHeadedSame vh1 vh2)
+  varHeadedSame (IsZeroVar vh1) (IsZeroVar vh1) | Refl = Refl
 varHeadedSame (AppVar vh1) (AppVar vh2) with (varHeadedSame vh1 vh2)
   varHeadedSame (AppVar vh1) (AppVar vh1) | Refl = Refl
 varHeadedSame (LetVarL vh12 vh11) (LetVarL vh22 vh21) with (varHeadedSame vh11 vh21, varHeadedSame vh12 vh22)
@@ -88,6 +91,11 @@ mutual
   varHeadedNoEval (PrimVarR v vh) (EvPrimLetL v1 v2) = valNotVarHeaded v2 vh
   varHeadedNoEval (PrimVarR v (LetVarL vh2 vh1)) (EvPrimLetR v2) = valNotVarHeaded v2 vh2
   varHeadedNoEval (PrimVarR v (LetVarR vh2)) (EvPrimLetR v2) = valNotVarHeaded v2 vh2
+  varHeadedNoEval (IsZeroVar vh) (EvIsZero1 ev) = varHeadedNoEval vh ev
+  varHeadedNoEval (IsZeroVar vh) EvIsZero2 impossible
+  varHeadedNoEval (IsZeroVar vh) (EvIsZero3 neq) impossible
+  varHeadedNoEval (IsZeroVar (LetVarL vh2 vh1)) (EvIsZeroLet v) = valNotVarHeaded v vh2
+  varHeadedNoEval (IsZeroVar (LetVarR vh2)) (EvIsZeroLet v) = valNotVarHeaded v vh2
   varHeadedNoEval (AppVar vh) (EvApp1 ev) = varHeadedNoEval vh ev
   varHeadedNoEval (AppVar vh) EvApp2 impossible
   varHeadedNoEval (AppVar (LetVarL vh2 vh1)) (EvAppLet v) = valNotVarHeaded v vh2

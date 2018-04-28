@@ -19,6 +19,11 @@ data Eval : Expr env t -> Expr env t -> Type where
       Eval (Prim f (Let e11 e12) e2) (Let e11 (Prim f e12 (incr FZ _ e2)))
   EvPrimLetR : IsValue e22 b ->
       Eval (Prim f (Num n1) (Let e21 e22)) (Let e21 (Prim f (incr FZ _ (Num n1)) e22))
+  EvIsZero1 : Eval e1 e1' -> Eval (IsZero e1 e2 e3) (IsZero e1' e2 e3)
+  EvIsZero2 : Eval (IsZero (Num 0) e2 e3) e2
+  EvIsZero3 : Not (n = 0) -> Eval (IsZero (Num n) e2 e3) e3
+  EvIsZeroLet : IsValue e12 b ->
+      Eval (IsZero (Let e11 e12) e2 e3) (Let e11 (IsZero e12 (incr FZ _ e2) (incr FZ _ e3)))
   EvApp1 : Eval e1 e1' -> Eval (App e1 e2) (App e1' e2)
   EvApp2 : Eval (App (Abs t1 e1) e2) (Let e2 e1)
   EvAppLet : IsValue e12 b ->
@@ -63,6 +68,15 @@ progress' {t = IntTy} (Prim f e1 e2) with (progress' e1)
       Step (Prim f e1' e2) (EvPrim1 ev)
   progress' {t = IntTy} (Prim f e1 e2) | VarHeaded ix vh =
       VarHeaded ix (PrimVarL vh)
+progress' (IsZero e1 e2 e3) with (progress' e1)
+  progress' (IsZero (Num n) e2 e3) | Value IntVal with (decEq n 0)
+    progress' (IsZero (Num n) e2 e3) | Value IntVal | Yes eq =
+        Step e2 (rewrite eq in EvIsZero2)
+    progress' (IsZero (Num n) e2 e3) | Value IntVal | No neq = Step e3 (EvIsZero3 neq)
+  progress' (IsZero (Let e11 e12) e2 e3) | Value (LetVal v) =
+      Step (Let e11 (IsZero e12 (incr FZ _ e2) (incr FZ _ e3))) (EvIsZeroLet v)
+  progress' (IsZero e1 e2 e3) | Step e1' ev = Step (IsZero e1' e2 e3) (EvIsZero1 ev)
+  progress' (IsZero e1 e2 e3) | VarHeaded ix vh = VarHeaded ix (IsZeroVar vh)
 progress' (App e1 e2) with (progress' e1)
   progress' (App (Abs t1 e1) e2) | Value ArrowVal = Step (Let e2 e1) EvApp2
   progress' (App (Let e11 e12) e2) | Value (LetVal v) =

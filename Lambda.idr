@@ -17,6 +17,7 @@ mutual
     Var : Index env t -> Expr env t
     Num : Int -> Expr env IntTy
     Prim : (Int -> Int -> Int) -> Expr env IntTy -> Expr env IntTy -> Expr env IntTy
+    IsZero : Expr env IntTy -> Expr env t -> Expr env t -> Expr env t
     App : Expr env (ArrowTy t1 t2) -> Expr env t1 -> Expr env t2
     Abs : (t1 : Ty tn) -> Expr (t1 :: env) t2 -> Expr env (ArrowTy t1 t2)
     Let : Expr env t1 -> Expr (t1 :: env) t2 -> Expr env t2
@@ -45,6 +46,7 @@ data IsVarHeaded : Expr env t -> Index env t' -> Type where
   VarVar : IsVarHeaded (Var ix) ix
   PrimVarL : IsVarHeaded e1 ix -> IsVarHeaded (Prim f e1 e2) ix
   PrimVarR : IsValue e1 b -> IsVarHeaded e2 ix -> IsVarHeaded (Prim f e1 e2) ix
+  IsZeroVar : IsVarHeaded e1 ix -> IsVarHeaded (IsZero e1 e2 e3) ix
   AppVar : IsVarHeaded e1 ix -> IsVarHeaded (App e1 e2) ix
   LetVarL : IsVarHeaded e2 (IxZ t1 env) -> IsVarHeaded e1 ix -> IsVarHeaded (Let e1 e2) ix
   LetVarR : IsVarHeaded e2 (IxS b ix) -> IsVarHeaded (Let e1 e2) ix
