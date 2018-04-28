@@ -130,7 +130,7 @@ progress e with (progress' e)
   progress e | VarHeaded ix vh impossible
 
 export partial
-evaluate : (e : Expr [] t) -> (b ** e' ** (Iterate Eval e e', IsValue e' b))
+evaluate : {t : Ty 0} -> (e : Expr [] t) -> (b ** e' ** (Iterate Eval e e', IsValue e' b))
 evaluate e with (progress e)
   evaluate e | Left (b ** v) = (b ** e ** (IterRefl, v))
   evaluate e | Right (e' ** ev) with (evaluate e')
