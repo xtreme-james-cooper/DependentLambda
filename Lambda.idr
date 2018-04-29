@@ -34,18 +34,24 @@ mutual
     Alt : Expr (xs ++ env) t -> Alts env ctrs t -> Alts env ((p ** xs) :: ctrs) t
 
 public export
-data IsValue : Expr env t -> Bool -> Type where
-  IntVal : IsValue (Num x) True
-  ArrowVal : IsValue (Abs t e) True
-  DataVal : IsValue (Constr tag es) True
-  ForallVal : IsValue (TyAbs e) True
-  LetVal : IsValue e2 b -> IsValue (Let e1 e2) False
+data ValueType : Type where
+  PrimValTy : ValueType
+  StructValTy : ValueType
+  LetValTy : ValueType
+
+public export
+data IsValue : Expr env t -> ValueType -> Type where
+  IntVal : IsValue (Num x) PrimValTy
+  ArrowVal : IsValue (Abs t e) StructValTy
+  DataVal : IsValue (Constr tag es) StructValTy
+  ForallVal : IsValue (TyAbs e) StructValTy
+  LetVal : IsValue e2 b -> Not (b = PrimValTy) -> IsValue (Let e1 e2) LetValTy
 
 public export
 data IsVarHeaded : Expr env t -> Index env t' -> Type where
   VarVar : IsVarHeaded (Var ix) ix
   PrimVarL : IsVarHeaded e1 ix -> IsVarHeaded (Prim f e1 e2) ix
-  PrimVarR : IsValue e1 b -> IsVarHeaded e2 ix -> IsVarHeaded (Prim f e1 e2) ix
+  PrimVarR : IsVarHeaded e2 ix -> IsVarHeaded (Prim f (Num n) e2) ix
   IsZeroVar : IsVarHeaded e1 ix -> IsVarHeaded (IsZero e1 e2 e3) ix
   AppVar : IsVarHeaded e1 ix -> IsVarHeaded (App e1 e2) ix
   LetVarL : IsVarHeaded e2 (IxZ t1 env) -> IsVarHeaded e1 ix -> IsVarHeaded (Let e1 e2) ix

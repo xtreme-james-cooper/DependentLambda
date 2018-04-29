@@ -42,14 +42,6 @@ mutual
       in Alt e' (incra x tt as)
 
 export
-incrIsVal : (x : Fin (S n)) -> IsValue e b -> IsValue (incr x t e) b
-incrIsVal x IntVal = IntVal
-incrIsVal x ArrowVal = ArrowVal
-incrIsVal x DataVal = DataVal
-incrIsVal x ForallVal = ForallVal
-incrIsVal x (LetVal v) = LetVal (incrIsVal (FS x) v)
-
-export
 multiincr : Expr env t -> Expr (ts ++ env) t
 multiincr {ts = []} e = e
 multiincr {ts = t :: ts} e = incr FZ t (multiincr e)
@@ -61,18 +53,17 @@ multiincra {ts' = t :: ts'} as = incra FZ t (multiincra as)
 
 export
 subst : {ix : Index env t'} -> (e' : Expr env t') -> (e : Expr env t) ->
-    IsValue e' True -> IsVarHeaded e ix -> Expr env t
-subst e' (Var ix) v VarVar = e'
-subst e' (Prim f e1 e2) v (PrimVarL vh) = Prim f (subst e' e1 v vh) e2
-subst e' (Prim f e1 e2) v (PrimVarR v' vh) = Prim f e1 (subst e' e2 v vh)
-subst e' (IsZero e1 e2 e3) v (IsZeroVar vh) = IsZero (subst e' e1 v vh) e2 e3
-subst e' (App e1 e2) v (AppVar vh) = App (subst e' e1 v vh) e2
-subst e' (Let e1 e2) v (LetVarL vh2 vh1) = Let (subst e' e1 v vh1) e2
-subst e' (Let e1 e2) v (LetVarR vh2) =
-    Let e1 (subst (incr FZ _ e') e2 (incrIsVal FZ v) vh2)
-subst e' (Fix e) v (FixVar vh) = Fix (subst e' e v vh)
-subst e' (Case e as) v (CaseVar vh) = Case (subst e' e v vh) as
-subst e' (TyApp e t eq) v (TyAppVar vh) = TyApp (subst e' e v vh) t eq
+    IsVarHeaded e ix -> Expr env t
+subst e' (Var ix) VarVar = e'
+subst e' (Prim f e1 e2) (PrimVarL vh) = Prim f (subst e' e1 vh) e2
+subst e' (Prim f (Num n) e2) (PrimVarR vh) = Prim f (Num n) (subst e' e2 vh)
+subst e' (IsZero e1 e2 e3) (IsZeroVar vh) = IsZero (subst e' e1 vh) e2 e3
+subst e' (App e1 e2) (AppVar vh) = App (subst e' e1 vh) e2
+subst e' (Let e1 e2) (LetVarL vh2 vh1) = Let (subst e' e1 vh1) e2
+subst e' (Let e1 e2) (LetVarR vh2) = Let e1 (subst (incr FZ _ e') e2 vh2)
+subst e' (Fix e) (FixVar vh) = Fix (subst e' e vh)
+subst e' (Case e as) (CaseVar vh) = Case (subst e' e vh) as
+subst e' (TyApp e t eq) (TyAppVar vh) = TyApp (subst e' e vh) t eq
 
 varsSubst : (x : Fin (S n)) -> Index env t' -> VarArgs (insertAt x t' env) ts -> VarArgs env ts
 varsSubst x ix' [] = []
