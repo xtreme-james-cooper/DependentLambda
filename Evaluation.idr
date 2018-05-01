@@ -45,6 +45,9 @@ data Eval : Expr env t -> Expr env t -> Type where
   EvTyApp1 : Eval e e' -> Eval (TyApp e t eq) (TyApp e' t eq)
   EvTyApp2 : Eval (TyApp (TyAbs e) t eq) (tySubst t e)
   EvTyAppLet : IsValue e2 b -> Eval (TyApp (Let e1 e2) t eq) (Let e1 (TyApp e2 t eq))
+  EvUnfold1 : Eval e e' -> Eval (Unfold e eq) (Unfold e' eq)
+  EvUnfold2 : Eval (Unfold (Fold e) eq) e
+  EvUnfoldLet : IsValue e2 b -> Eval (Unfold (Let e1 e2) eq) (Let e1 (Unfold e2 eq))
 
 data Progress : Expr env t -> Type where
   Value : IsValue e b -> Progress e
@@ -126,7 +129,13 @@ progress' (TyApp e t eq) with (progress' e)
   progress' (TyApp e t eq) | Step e' ev = Step (TyApp e' t eq) (EvTyApp1 ev)
   progress' (TyApp e t eq) | VarHeaded ix vh = VarHeaded ix (TyAppVar vh)
 progress' {t = ForallTy t} (TyAbs e) = Value ForallVal
-
+progress' {t = FixTy t} (Fold e) = Value FixVal
+progress' (Unfold e eq) with (progress' e)
+  progress' (Unfold (Fold e) Refl) | Value FixVal = Step e EvUnfold2
+  progress' (Unfold (Let e1 e2) eq) | Value (LetVal v npr) =
+      Step (Let e1 (Unfold e2 eq)) (EvUnfoldLet v)
+  progress' (Unfold e eq) | Step e' ev = Step (Unfold e' eq) (EvUnfold1 ev)
+  progress' (Unfold e eq) | VarHeaded ix vh = VarHeaded ix (UnfoldVar vh)
 
 export
 progress : (e : Expr [] t) -> Either (b ** IsValue e b) (e' ** Eval e e')

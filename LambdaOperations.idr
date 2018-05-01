@@ -32,6 +32,8 @@ mutual
   incr x tt (TyApp e t' eq) = TyApp (incr x tt e) t' eq
   incr x tt (TyAbs e) {env = env} =
       TyAbs (rewrite insertAtMap (tyincr FZ) x tt env in incr x (tyincr FZ tt) e)
+  incr x tt (Fold e) = Fold (incr x tt e)
+  incr x tt (Unfold e eq) = Unfold (incr x tt e) eq
 
   export
   incra : (x : Fin (S n)) -> (tt : Ty tn) -> Alts env ctrs ts -> Alts (insertAt x tt env) ctrs ts
@@ -64,6 +66,7 @@ subst e' (Let e1 e2) (LetVarR vh2) = Let e1 (subst (incr FZ _ e') e2 vh2)
 subst e' (Fix e) (FixVar vh) = Fix (subst e' e vh)
 subst e' (Case e as) (CaseVar vh) = Case (subst e' e vh) as
 subst e' (TyApp e t eq) (TyAppVar vh) = TyApp (subst e' e vh) t eq
+subst e' (Unfold e eq) (UnfoldVar vh) = Unfold (subst e' e vh) eq
 
 varsSubst : (x : Fin (S n)) -> Index env t' -> VarArgs (insertAt x t' env) ts -> VarArgs env ts
 varsSubst x ix' [] = []
@@ -89,6 +92,8 @@ mutual
       in let small_ep : Expr (insertAt x (tyincr FZ t') (map (tyincr FZ) env)) t =
           assert_smaller (TyAbs e) ep
       in TyAbs (varSubst x (indexMap (tyincr FZ) ix') small_ep)
+  varSubst x ix' (Fold e) = Fold (varSubst x ix' e)
+  varSubst x ix' (Unfold e eq) = Unfold (varSubst x ix' e) eq
 
   varSubsta : (x : Fin (S n)) -> Index env t' -> Alts (insertAt x t' env) ctrs t -> Alts env ctrs t
   varSubsta x ix' Fail = Fail
@@ -135,6 +140,10 @@ mutual
       TyApp (tySubst' x t' e) (tsubst x t' t) (sym (tsubstTsubst x FZ t' t tt ZLeX))
   tySubst' x t' (TyAbs e) {env = env} =
       TyAbs (rewrite sym (tsubstTincrList x t' env) in tySubst' (FS x) (tyincr FZ t') e)
+  tySubst' x t' (Fold {t = tt} e) =
+      Fold (rewrite tsubstTsubst x FZ t' (FixTy tt) tt ZLeX in tySubst' x t' e)
+  tySubst' x t' (Unfold {t = tt} e Refl) =
+      Unfold (tySubst' x t' e) (sym (tsubstTsubst x FZ t' (FixTy tt) tt ZLeX))
 
   tySubsta' : (x : Fin (S tn)) -> (t' : Ty tn) -> Alts env ctrs t ->
       Alts (map (tsubst x t') env) (ctrssubst x t' ctrs) (tsubst x t' t)

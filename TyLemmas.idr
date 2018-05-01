@@ -23,6 +23,8 @@ mutual
   tincrTincr x y (DataTy ctrs) le = rewrite tincrTincrCtrs x y ctrs le in Refl
   tincrTincr x y (ForallTy t) le =
       rewrite tincrTincr (FS x) (FS y) t (SLeS le) in Refl
+  tincrTincr x y (FixTy t) le =
+      rewrite tincrTincr (FS x) (FS y) t (SLeS le) in Refl
 
   tincrTincrCtrs : (x : Fin (S n)) -> (y : Fin (S n)) ->
       (ctrs : Vect m (k ** Vect k (Ty n))) -> y `FinLessEqThan` x ->
@@ -49,6 +51,8 @@ mutual
   tsubstIncrSame x t' IntTy = Refl
   tsubstIncrSame x t' (DataTy ctrs) = rewrite tsubstIncrSameCtrs x t' ctrs in Refl
   tsubstIncrSame x t' (ForallTy t) =
+      rewrite tsubstIncrSame (FS x) (tyincr FZ t') t in Refl
+  tsubstIncrSame x t' (FixTy t) =
       rewrite tsubstIncrSame (FS x) (tyincr FZ t') t in Refl
 
   tsubstIncrSameCtrs : (x : Fin (S n)) -> (t' : Ty n) ->
@@ -91,6 +95,9 @@ mutual
   tsubstTincr x y t' (DataTy ctrs) le =
       rewrite tsubstTincrCtrs x y t' ctrs le in Refl
   tsubstTincr x y t' (ForallTy t) le =
+      rewrite sym (tsubstTincr (FS x) (FS y) (tyincr FZ t') t (SLeS le)) in
+      rewrite tincrTincr y FZ t' ZLeX in Refl
+  tsubstTincr x y t' (FixTy t) le =
       rewrite sym (tsubstTincr (FS x) (FS y) (tyincr FZ t') t (SLeS le)) in
       rewrite tincrTincr y FZ t' ZLeX in Refl
 
@@ -152,6 +159,10 @@ mutual
   tsubstTsubst x y t1 t2 (DataTy ctrs) le =
       rewrite tsubstTsubstCtrs x y t1 t2 ctrs le in Refl
   tsubstTsubst x y t1 t2 (ForallTy t) le =
+      rewrite sym (tsubstTincr x FZ t1 t2 ZLeX) in rewrite sym (tincrTincr y FZ t1 ZLeX)
+      in rewrite tsubstTsubst (FS x) (FS y) (tyincr FZ t1) (tyincr FZ t2) t (SLeS le)
+      in Refl
+  tsubstTsubst x y t1 t2 (FixTy t) le =
       rewrite sym (tsubstTincr x FZ t1 t2 ZLeX) in rewrite sym (tincrTincr y FZ t1 ZLeX)
       in rewrite tsubstTsubst (FS x) (FS y) (tyincr FZ t1) (tyincr FZ t2) t (SLeS le)
       in Refl

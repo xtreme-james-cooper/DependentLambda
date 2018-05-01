@@ -27,6 +27,8 @@ mutual
     Case : Expr env (DataTy ctrs) -> Alts env ctrs t -> Expr env t
     TyApp : Expr env (ForallTy t) -> (t' : Ty tn) -> tt = tsubst FZ t' t -> Expr env tt
     TyAbs : Expr (map (tyincr FZ) env) t -> Expr env (ForallTy t)
+    Fold : Expr env (tsubst FZ (FixTy t) t) -> Expr env (FixTy t)
+    Unfold : Expr env (FixTy t) -> tt = tsubst FZ (FixTy t) t -> Expr env tt
 
   public export
   data Alts : Vect n (Ty tn) -> Vect m (p ** Vect p (Ty tn)) -> Ty tn -> Type where
@@ -45,6 +47,7 @@ data IsValue : Expr env t -> ValueType -> Type where
   ArrowVal : IsValue (Abs t e) StructValTy
   DataVal : IsValue (Constr tag es) StructValTy
   ForallVal : IsValue (TyAbs e) StructValTy
+  FixVal : IsValue (Fold e) StructValTy
   LetVal : IsValue e2 b -> Not (b = PrimValTy) -> IsValue (Let e1 e2) LetValTy
 
 public export
@@ -59,3 +62,4 @@ data IsVarHeaded : Expr env t -> Index env t' -> Type where
   FixVar : IsVarHeaded e ix -> IsVarHeaded (Fix e) ix
   CaseVar : IsVarHeaded e ix -> IsVarHeaded (Case e as) ix
   TyAppVar : IsVarHeaded e ix -> IsVarHeaded (TyApp e t eq) ix
+  UnfoldVar : IsVarHeaded e ix -> IsVarHeaded (Unfold e eq) ix

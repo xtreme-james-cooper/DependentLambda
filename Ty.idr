@@ -13,6 +13,7 @@ data Ty : Nat -> Type where
   IntTy : Ty n
   DataTy : Vect m (k ** Vect k (Ty n)) -> Ty n
   ForallTy : Ty (S n) -> Ty n
+  FixTy : Ty (S n) -> Ty n
 
 mutual
   public export
@@ -22,6 +23,7 @@ mutual
   tyincr ix IntTy = IntTy
   tyincr ix (DataTy ctrs) = DataTy (ctrsincrs ix ctrs)
   tyincr ix (ForallTy t) = ForallTy (tyincr (FS ix) t)
+  tyincr ix (FixTy t) = FixTy (tyincr (FS ix) t)
 
   public export
   ctrsincrs : Fin (S n) -> Vect m (k ** Vect k (Ty n)) -> Vect m (k ** Vect k (Ty (S n)))
@@ -43,6 +45,7 @@ mutual
   tsubst ix t' IntTy = IntTy
   tsubst ix t' (DataTy ctrs) = DataTy (ctrssubst ix t' ctrs)
   tsubst ix t' (ForallTy t) = ForallTy (tsubst (FS ix) (tyincr 0 t') t)
+  tsubst ix t' (FixTy t) = FixTy (tsubst (FS ix) (tyincr 0 t') t)
 
   public export
   ctrssubst : Fin (S n) -> Ty n -> Vect m (k ** Vect k (Ty (S n))) -> Vect m (k ** Vect k (Ty n))

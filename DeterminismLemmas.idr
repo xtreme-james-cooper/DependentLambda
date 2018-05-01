@@ -14,9 +14,10 @@ valNotVarHeaded : IsValue e b -> Not (IsVarHeaded e ix)
 valNotVarHeaded IntVal vh impossible
 valNotVarHeaded ArrowVal vh impossible
 valNotVarHeaded DataVal vh impossible
+valNotVarHeaded ForallVal vh impossible
+valNotVarHeaded FixVal vh impossible
 valNotVarHeaded (LetVal v npr) (LetVarR vh2) = valNotVarHeaded v vh2
 valNotVarHeaded (LetVal v npr) (LetVarL vh2 vh1) = valNotVarHeaded v vh2
-valNotVarHeaded ForallVal vh impossible
 
 mutual
   varHeadedSameIndex : {ix : Index as t'} -> {ix' : Index as t''} ->
@@ -36,6 +37,7 @@ mutual
   varHeadedSameIndex (FixVar vh1) (FixVar vh2) = varHeadedSameIndex vh1 vh2
   varHeadedSameIndex (CaseVar vh1) (CaseVar vh2) = varHeadedSameIndex vh1 vh2
   varHeadedSameIndex (TyAppVar vh1) (TyAppVar vh2) = varHeadedSameIndex vh1 vh2
+  varHeadedSameIndex (UnfoldVar vh1) (UnfoldVar vh2) = varHeadedSameIndex vh1 vh2
 
   varHeadedDiff : IsVarHeaded e (IxZ a as) -> Not (IsVarHeaded e (IxS a ix))
   varHeadedDiff vh1 vh2 with (varHeadedSameIndex vh1 vh2)
@@ -66,6 +68,8 @@ varHeadedSame (CaseVar vh1) (CaseVar vh2) with (varHeadedSame vh1 vh2)
   varHeadedSame (CaseVar vh1) (CaseVar vh1) | Refl = Refl
 varHeadedSame (TyAppVar vh1) (TyAppVar vh2) with (varHeadedSame vh1 vh2)
   varHeadedSame (TyAppVar vh1) (TyAppVar vh1) | Refl = Refl
+varHeadedSame (UnfoldVar vh1) (UnfoldVar vh2) with (varHeadedSame vh1 vh2)
+  varHeadedSame (UnfoldVar vh1) (UnfoldVar vh1) | Refl = Refl
 
 mutual
   export
@@ -112,18 +116,23 @@ mutual
   varHeadedNoEval (TyAppVar vh) EvTyApp2 impossible
   varHeadedNoEval (TyAppVar (LetVarL vh2 vh1)) (EvTyAppLet v) = valNotVarHeaded v vh2
   varHeadedNoEval (TyAppVar (LetVarR vh2)) (EvTyAppLet v) = valNotVarHeaded v vh2
+  varHeadedNoEval (UnfoldVar vh) (EvUnfold1 ev) = varHeadedNoEval vh ev
+  varHeadedNoEval (UnfoldVar vh) EvUnfold2 impossible
+  varHeadedNoEval (UnfoldVar (LetVarL vh2 vh1)) (EvUnfoldLet v) = valNotVarHeaded v vh2
+  varHeadedNoEval (UnfoldVar (LetVarR vh2)) (EvUnfoldLet v) = valNotVarHeaded v vh2
 
   export
   valNoEval : IsValue e b -> Not (Eval e e')
   valNoEval IntVal ev impossible
   valNoEval ArrowVal ev impossible
   valNoEval DataVal ev impossible
+  valNoEval ForallVal ev impossible
+  valNoEval FixVal ev impossible
   valNoEval (LetVal v1 npr) (EvLet1 ev) = valNoEval v1 ev
   valNoEval (LetVal v1 npr) (EvLet2 vh ev) = valNotVarHeaded v1 vh
   valNoEval (LetVal v1 npr) (EvLet3 vh v2 npr') = valNotVarHeaded v1 vh
   valNoEval (LetVal v1 npr) (EvLetLet vh v2 npr') = valNotVarHeaded v1 vh
   valNoEval (LetVal IntVal npr) EvLetGC = npr Refl
-  valNoEval ForallVal ev impossible
 
 export
 arrowNotPrim : {e : Expr env (ArrowTy t1 t2)} -> IsValue e b -> Not (b = PrimValTy)
@@ -139,3 +148,8 @@ export
 forallNotPrim : {e : Expr env (ForallTy t)} -> IsValue e b -> Not (b = PrimValTy)
 forallNotPrim {e = TyAbs e} ConstrVal Refl impossible
 forallNotPrim {e = Let e1 e2} (LetVal v npr) Refl impossible
+
+export
+fixNotPrim : {e : Expr env (FixTy t)} -> IsValue e b -> Not (b = PrimValTy)
+fixNotPrim {e = Fold e} FixVal Refl impossible
+fixNotPrim {e = Let e1 e2} (LetVal v npr) Refl impossible
