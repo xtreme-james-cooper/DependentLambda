@@ -13,16 +13,16 @@ import Ty
 public export
 data Eval : Expr env t -> Expr env t -> Type where
   EvPrim1 : Eval e1 e1' -> Eval (Prim f e1 e2) (Prim f e1' e2)
-  EvPrim2 : IsValue e1 b -> Eval e2 e2' -> Eval (Prim f e1 e2) (Prim f e1 e2')
+  EvPrim2 : Eval e2 e2' -> Eval (Prim f (Num n1) e2) (Prim f (Num n1) e2')
   EvPrim3 : Eval (Prim f (Num n1) (Num n2)) (Num (f n1 n2))
-  EvPrimLetL : IsValue e12 b ->
+  EvPrimLetL : IsValue e12 b -> Not (b = PrimValTy) ->
       Eval (Prim f (Let e11 e12) e2) (Let e11 (Prim f e12 (incr FZ _ e2)))
-  EvPrimLetR : IsValue e22 b ->
+  EvPrimLetR : IsValue e22 b -> Not (b = PrimValTy) ->
       Eval (Prim f (Num n1) (Let e21 e22)) (Let e21 (Prim f (incr FZ _ (Num n1)) e22))
   EvIsZero1 : Eval e1 e1' -> Eval (IsZero e1 e2 e3) (IsZero e1' e2 e3)
   EvIsZero2 : Eval (IsZero (Num 0) e2 e3) e2
   EvIsZero3 : Not (n = 0) -> Eval (IsZero (Num n) e2 e3) e3
-  EvIsZeroLet : IsValue e12 b ->
+  EvIsZeroLet : IsValue e12 b -> Not (b = PrimValTy) ->
       Eval (IsZero (Let e11 e12) e2 e3) (Let e11 (IsZero e12 (incr FZ _ e2) (incr FZ _ e3)))
   EvApp1 : Eval e1 e1' -> Eval (App e1 e2) (App e1' e2)
   EvApp2 : Eval (App (Abs t1 e1) e2) (Let e2 e1)
@@ -30,10 +30,11 @@ data Eval : Expr env t -> Expr env t -> Type where
       Eval (App (Let e11 e12) e2) (Let e11 (App e12 (incr FZ _ e2)))
   EvLet1 : Eval e2 e2' -> Eval (Let e1 e2) (Let e1 e2')
   EvLet2 : IsVarHeaded e2 (IxZ t env) -> Eval e1 e1' -> Eval (Let e1 e2) (Let e1' e2)
-  EvLet3 : (vh : IsVarHeaded e2 (IxZ t env)) -> (v : IsValue e1 b) -> (neq : Not (b = LetValTy)) ->
+  EvLet3 : (vh : IsVarHeaded e2 (IxZ t env)) -> (v : IsValue e1 b) -> (nlt : Not (b = LetValTy)) ->
       Eval (Let e1 e2) (Let e1 (subst (incr FZ _ e1) e2 vh))
   EvLetLet : (vh : IsVarHeaded e2 (IxZ t env)) -> (v : IsValue e12 b) ->
-      Eval (Let (Let e11 e12) e2) (Let e11 (Let e12 (incr (FS FZ) _ e2)))
+      (npr : Not (b = PrimValTy)) ->
+          Eval (Let (Let e11 e12) e2) (Let e11 (Let e12 (incr (FS FZ) _ e2)))
   EvLetGC : Eval (Let e1 (Num n)) (Num n)
   EvFix1 : Eval e e' -> Eval (Fix e) (Fix e')
   EvFix2 : Eval (Fix (Abs t1 e1)) (Let (Fix (Abs t1 e1)) e1)
@@ -58,13 +59,13 @@ progress' {t = IntTy} (Prim f e1 e2) with (progress' e1)
     progress' {t = IntTy} (Prim f (Num n1) (Num n2)) | Value IntVal | Value IntVal =
         Step (Num (f n1 n2)) EvPrim3
     progress' {t = IntTy} (Prim f (Num n1) (Let e21 e22)) | Value IntVal | Value (LetVal v2 npr) =
-        Step (Let e21 (Prim f (incr FZ _ (Num n1)) e22)) (EvPrimLetR v2)
+        Step (Let e21 (Prim f (incr FZ _ (Num n1)) e22)) (EvPrimLetR v2 npr)
     progress' {t = IntTy} (Prim f (Num n1) e2) | Value IntVal | Step e2' ev =
-        Step (Prim f (Num n1) e2') (EvPrim2 IntVal ev)
+        Step (Prim f (Num n1) e2') (EvPrim2 ev)
     progress' {t = IntTy} (Prim f (Num n1) e2) | Value IntVal | VarHeaded ix vh =
         VarHeaded ix (PrimVarR vh)
   progress' {t = IntTy} (Prim f (Let e11 e12) e2) | Value (LetVal v npr) =
-      Step (Let e11 (Prim f e12 (incr FZ _ e2))) (EvPrimLetL v)
+      Step (Let e11 (Prim f e12 (incr FZ _ e2))) (EvPrimLetL v npr)
   progress' {t = IntTy} (Prim f e1 e2) | Step e1' ev =
       Step (Prim f e1' e2) (EvPrim1 ev)
   progress' {t = IntTy} (Prim f e1 e2) | VarHeaded ix vh =
@@ -75,7 +76,7 @@ progress' (IsZero e1 e2 e3) with (progress' e1)
         Step e2 (rewrite eq in EvIsZero2)
     progress' (IsZero (Num n) e2 e3) | Value IntVal | No neq = Step e3 (EvIsZero3 neq)
   progress' (IsZero (Let e11 e12) e2 e3) | Value (LetVal v npr) =
-      Step (Let e11 (IsZero e12 (incr FZ _ e2) (incr FZ _ e3))) (EvIsZeroLet v)
+      Step (Let e11 (IsZero e12 (incr FZ _ e2) (incr FZ _ e3))) (EvIsZeroLet v npr)
   progress' (IsZero e1 e2 e3) | Step e1' ev = Step (IsZero e1' e2 e3) (EvIsZero1 ev)
   progress' (IsZero e1 e2 e3) | VarHeaded ix vh = VarHeaded ix (IsZeroVar vh)
 progress' (App e1 e2) with (progress' e1)
@@ -96,7 +97,7 @@ progress' (Let e1 e2) with (progress' e2)
     progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Value {b = StructValTy} v =
         Step (Let e1 (subst (incr FZ _ e1) e2 vh)) (EvLet3 vh v (\(Refl) impossible))
     progress' (Let (Let e11 e12) e2) | VarHeaded (IxZ t1 env) vh | Value {b = LetValTy} (LetVal v npr) =
-        Step (Let e11 (Let e12 (incr (FS FZ) _ e2))) (EvLetLet vh v)
+        Step (Let e11 (Let e12 (incr (FS FZ) _ e2))) (EvLetLet vh v npr)
     progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Step e1' ev =
         Step (Let e1' e2) (EvLet2 vh ev)
     progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | VarHeaded ix vh' =
