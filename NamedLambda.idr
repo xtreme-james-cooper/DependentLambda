@@ -40,5 +40,5 @@ mutual
   public export
   data NAlts : FinMap Name (Ty tn) -> Vect m (p ** Vect p (Ty tn)) -> Ty tn -> Type where
     Fail : NAlts env [] t
-    Alt : (xs : Vect p Name) -> (ts : Vect p (Ty tn)) -> NExpr (multiExtend env xs ts) t ->
+    Alt : (xs : Vect p Name) -> NExpr (multiExtend env xs ts) t ->
         NAlts env ctrs t -> NAlts env ((p ** ts) :: ctrs) t
