@@ -3,6 +3,7 @@ module Determinism
 import Evaluation
 import Lambda
 import LambdaOperations
+import Values
 import Data.Vect
 import Index
 import Ty

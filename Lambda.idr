@@ -34,32 +34,3 @@ mutual
   data Alts : Vect n (Ty tn) -> Vect m (p ** Vect p (Ty tn)) -> Ty tn -> Type where
     Fail : Alts env [] t
     Alt : Expr (xs ++ env) t -> Alts env ctrs t -> Alts env ((p ** xs) :: ctrs) t
-
-public export
-data ValueType : Type where
-  PrimValTy : ValueType
-  StructValTy : ValueType
-  LetValTy : ValueType
-
-public export
-data IsValue : Expr env t -> ValueType -> Type where
-  IntVal : IsValue (Num x) PrimValTy
-  ArrowVal : IsValue (Abs t e) StructValTy
-  DataVal : IsValue (Constr tag es) StructValTy
-  ForallVal : IsValue (TyAbs e) StructValTy
-  FixVal : IsValue (Fold e) StructValTy
-  LetVal : IsValue e2 b -> Not (b = PrimValTy) -> IsValue (Let e1 e2) LetValTy
-
-public export
-data IsVarHeaded : Expr env t -> Index env t' -> Type where
-  VarVar : IsVarHeaded (Var ix) ix
-  PrimVarL : IsVarHeaded e1 ix -> IsVarHeaded (Prim f e1 e2) ix
-  PrimVarR : IsVarHeaded e2 ix -> IsVarHeaded (Prim f (Num n) e2) ix
-  IsZeroVar : IsVarHeaded e1 ix -> IsVarHeaded (IsZero e1 e2 e3) ix
-  AppVar : IsVarHeaded e1 ix -> IsVarHeaded (App e1 e2) ix
-  LetVarL : IsVarHeaded e2 (IxZ t1 env) -> IsVarHeaded e1 ix -> IsVarHeaded (Let e1 e2) ix
-  LetVarR : IsVarHeaded e2 (IxS b ix) -> IsVarHeaded (Let e1 e2) ix
-  FixVar : IsVarHeaded e ix -> IsVarHeaded (Fix e) ix
-  CaseVar : IsVarHeaded e ix -> IsVarHeaded (Case e as) ix
-  TyAppVar : IsVarHeaded e ix -> IsVarHeaded (TyApp e t eq) ix
-  UnfoldVar : IsVarHeaded e ix -> IsVarHeaded (Unfold e eq) ix

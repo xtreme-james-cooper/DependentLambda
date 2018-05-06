@@ -27,6 +27,11 @@ extendFin Z x = x
 extendFin (S m) x = FS (extendFin m x)
 
 public export
+extendFin' : (m : Nat) -> Fin (S n) -> Fin (m + S n)
+extendFin' Z x = x
+extendFin' (S m) x = FS (extendFin' m x)
+
+public export
 data FinLessEqThan : Fin n -> Fin n -> Type where
   ZLeX : FinLessEqThan FZ x
   SLeS : FinLessEqThan x y -> FinLessEqThan (FS x) (FS y)

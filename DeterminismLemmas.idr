@@ -2,6 +2,7 @@ module DeterminismLemmas
 
 import Evaluation
 import Lambda
+import Values
 import LambdaOperations
 import Data.Vect
 import Index
