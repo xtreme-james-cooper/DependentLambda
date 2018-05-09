@@ -9,26 +9,54 @@ or True x = True
 or False x = x
 
 export
-orLeft : Data.Vect.index x (zipWith BooleanHelper.or as bs) = False -> index x as = False
-orLeft {x = FZ} {as = True :: as} {bs = b :: bs} Refl impossible
-orLeft {x = FZ} {as = False :: as} {bs = b :: bs} eq = Refl
-orLeft {x = FS x} {as = a :: as} {bs = b :: bs} eq =
-    orLeft {x = x} {as = as} {bs = bs} eq
+orLeftT : Data.Vect.index x as = True -> index x (zipWith BooleanHelper.or as bs) = True
+orLeftT {x = FZ} {as = True :: as} {bs = b :: bs} eq = Refl
+orLeftT {x = FZ} {as = False :: as} {bs = b :: bs} Refl impossible
+orLeftT {x = FS x} {as = a :: as} {bs = b :: bs} eq =
+    orLeftT {x = x} {as = as} {bs = bs} eq
 
 export
-orRight : Data.Vect.index x (zipWith BooleanHelper.or as bs) = False -> index x bs = False
-orRight {x = FZ} {as = True :: as} {bs = b :: bs} Refl impossible
-orRight {x = FZ} {as = False :: as} {bs = True :: bs} Refl impossible
-orRight {x = FZ} {as = False :: as} {bs = False :: bs} eq = Refl
-orRight {x = FS x} {as = a :: as} {bs = b :: bs} eq =
-    orRight {x = x} {as = as} {bs = bs} eq
+orRightT : Data.Vect.index x bs = True -> index x (zipWith BooleanHelper.or as bs) = True
+orRightT {x = FZ} {as = True :: as} {bs = b :: bs} eq = Refl
+orRightT {x = FZ} {as = False :: as} {bs = True :: bs} eq = Refl
+orRightT {x = FZ} {as = False :: as} {bs = False :: bs} Refl impossible
+orRightT {x = FS x} {as = a :: as} {bs = b :: bs} eq =
+    orRightT {x = x} {as = as} {bs = bs} eq
 
 export
-orTail : Data.Vect.index x (tail as) = False -> index (FS x) as = False
-orTail {as = a :: as} eq = eq
+orTailT : Data.Vect.index (FS x) as = True -> index x (tail as) = True
+orTailT {as = a :: as} eq = eq
 
 export
-orDrop : Data.Vect.index x (drop p as) = False -> Data.Vect.index (extendFin' p x) as = False
-orDrop {x = x} {as = a :: as} {p = Z} eq = eq
-orDrop {x = x} {as = a :: as} {p = S p} eq =
-    orDrop {x = x} {as = as} {p = p} eq
+orLeftF : Data.Vect.index x (zipWith BooleanHelper.or as bs) = False -> index x as = False
+orLeftF {x = FZ} {as = True :: as} {bs = b :: bs} Refl impossible
+orLeftF {x = FZ} {as = False :: as} {bs = b :: bs} eq = Refl
+orLeftF {x = FS x} {as = a :: as} {bs = b :: bs} eq =
+    orLeftF {x = x} {as = as} {bs = bs} eq
+
+export
+orRightF : Data.Vect.index x (zipWith BooleanHelper.or as bs) = False -> index x bs = False
+orRightF {x = FZ} {as = True :: as} {bs = b :: bs} Refl impossible
+orRightF {x = FZ} {as = False :: as} {bs = True :: bs} Refl impossible
+orRightF {x = FZ} {as = False :: as} {bs = False :: bs} eq = Refl
+orRightF {x = FS x} {as = a :: as} {bs = b :: bs} eq =
+    orRightF {x = x} {as = as} {bs = bs} eq
+
+export
+orTailF : Data.Vect.index x (tail as) = False -> index (FS x) as = False
+orTailF {as = a :: as} eq = eq
+
+export
+orDropF : Data.Vect.index x (drop p as) = False -> Data.Vect.index (extendFin' p x) as = False
+orDropF {x = x} {as = a :: as} {p = Z} eq = eq
+orDropF {x = x} {as = a :: as} {p = S p} eq =
+    orDropF {x = x} {as = as} {p = p} eq
+
+export
+eqFlip : Not (a = False) -> a = True
+eqFlip {a = False} neq = void (neq Refl)
+eqFlip {a = True} neq = Refl
+
+export
+eqFlip' : a = False -> Not (a = True)
+eqFlip' Refl Refl impossible

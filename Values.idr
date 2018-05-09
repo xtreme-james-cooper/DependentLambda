@@ -43,14 +43,13 @@ mutual
   freeVarsAs (Alt e as) = zipWith or (drop _ (freeVars e)) (freeVarsAs as)
 
 public export
-data IsValue : {env : Vect n (Ty tn)} -> Expr env t -> Vect n Bool -> Type where
-  IntVal : IsValue (Num n) (replicate _ False)
-  ArrowVal : IsValue (Abs t e) (tail (freeVars e))
-  DataVal : IsValue (Constr tag es) (freeVarsXs es)
-  ForallVal : IsValue (TyAbs e) (freeVars e)
-  FixVal : IsValue (Fold e) (freeVars e)
-  LetVal : IsValue e2 fv -> index FZ fv = True ->
-      IsValue (Let e1 e2) (zipWith or (freeVars e1) (tail (freeVars e2)))
+data IsValue : Expr env t -> Type where
+  IntVal : IsValue (Num n)
+  ArrowVal : IsValue (Abs t e)
+  DataVal : IsValue (Constr tag es)
+  ForallVal : IsValue (TyAbs e)
+  FixVal : IsValue (Fold e)
+  LetVal : IsValue e2 -> index FZ (freeVars e2) = True -> IsValue (Let e1 e2)
 
 public export
 data IsVarHeaded : Expr env t -> Index env t' -> Type where

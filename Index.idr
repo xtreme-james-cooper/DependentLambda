@@ -26,7 +26,7 @@ indexRightExtend : (env' : Vect n t) -> Index env a -> Index (env ++ env') a
 indexRightExtend env' (IxZ a env) = IxZ a (env ++ env')
 indexRightExtend env' (IxS b ix) = IxS b (indexRightExtend env' ix)
 
-export
+public export
 finFromIndex : {env : Vect n a} -> Index env t -> Fin n
 finFromIndex (IxZ a as) = FZ
 finFromIndex (IxS c ix) = FS (finFromIndex ix)

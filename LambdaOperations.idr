@@ -161,47 +161,48 @@ tySubst : (t' : Ty tn) -> Expr (map (tyincr FZ) env) t -> Expr env (tsubst FZ t'
 tySubst t' e {env = env} =
     rewrite sym (tsubstIncrSameList FZ t' env) in tySubst' FZ t' e
 
-reduceIx : (x : Fin n) -> (tt : Ty tn) -> (ix : Index (insertAt (weaken x) tt env) t) ->
-    index (weaken x) (freeVar ix) = False -> Index env t
+reduceIx : (x : Fin (S n)) -> (tt : Ty tn) -> (ix : Index (insertAt x tt env) t) ->
+    index x (freeVar ix) = False -> Index env t
 reduceIx FZ tt (IxZ tt env) Refl impossible
 reduceIx FZ tt (IxS tt ix) nfv = ix
+reduceIx (FS x) tt ix nfv {env = []} impossible
 reduceIx (FS x) tt (IxZ t _) nfv {env = t :: env} = IxZ t env
 reduceIx (FS x) tt (IxS t ix) nfv {env = t :: env} = IxS t (reduceIx x tt ix nfv)
 
-reduceXs : (x : Fin n) -> (tt : Ty tn) -> (xs : VarArgs (insertAt (weaken x) tt env) t) ->
-    index (weaken x) (freeVarsXs xs) = False -> VarArgs env t
+reduceXs : (x : Fin (S n)) -> (tt : Ty tn) -> (xs : VarArgs (insertAt x tt env) t) ->
+    index x (freeVarsXs xs) = False -> VarArgs env t
 reduceXs x tt [] nfv = []
 reduceXs x tt (y :: xs) nfv =
-    reduceIx x tt y (orLeft nfv) :: reduceXs x tt xs (orRight nfv)
+    reduceIx x tt y (orLeftF nfv) :: reduceXs x tt xs (orRightF nfv)
 
 mutual
   export
-  reduce : (x : Fin n) -> (tt : Ty tn) -> (e : Expr (insertAt (weaken x) tt env) t) ->
-      index (weaken x) (freeVars e) = False -> Expr env t
+  reduce : (x : Fin (S n)) -> (tt : Ty tn) -> (e : Expr (insertAt x tt env) t) ->
+      index x (freeVars e) = False -> Expr env t
   reduce x tt (Var ix) nfv = Var (reduceIx x tt ix nfv)
   reduce x tt (Num n) nfv = Num n
   reduce x tt (Prim f e1 e2) nfv =
-      Prim f (reduce x tt e1 (orLeft nfv)) (reduce x tt e2 (orRight nfv))
+      Prim f (reduce x tt e1 (orLeftF nfv)) (reduce x tt e2 (orRightF nfv))
   reduce x tt (IsZero e1 e2 e3) nfv =
-      IsZero (reduce x tt e1 (orLeft nfv)) (reduce x tt e2 (orLeft (orRight nfv)))
-             (reduce x tt e3 (orRight (orRight nfv)))
+      IsZero (reduce x tt e1 (orLeftF nfv)) (reduce x tt e2 (orLeftF (orRightF nfv)))
+             (reduce x tt e3 (orRightF (orRightF nfv)))
   reduce x tt (App e1 e2) nfv =
-      App (reduce x tt e1 (orLeft nfv)) (reduce x tt e2 (orRight nfv))
-  reduce x tt (Abs t1 e) nfv = Abs t1 (reduce (FS x) tt e (orTail nfv))
+      App (reduce x tt e1 (orLeftF nfv)) (reduce x tt e2 (orRightF nfv))
+  reduce x tt (Abs t1 e) nfv = Abs t1 (reduce (FS x) tt e (orTailF nfv))
   reduce x tt (Let e1 e2) nfv =
-      Let (reduce x tt e1 (orLeft nfv)) (reduce (FS x) tt e2 (orTail (orRight nfv)))
+      Let (reduce x tt e1 (orLeftF nfv)) (reduce (FS x) tt e2 (orTailF (orRightF nfv)))
   reduce x tt (Fix e) nfv = Fix (reduce x tt e nfv)
   reduce x tt (Constr tag xs) nfv = Constr tag (reduceXs x tt xs nfv)
   reduce x tt (Case e as) nfv =
-      Case (reduce x tt e (orLeft nfv)) (reduceAs x tt as (orRight nfv))
+      Case (reduce x tt e (orLeftF nfv)) (reduceAs x tt as (orRightF nfv))
   reduce x tt (TyApp e t' eq) nfv = TyApp (reduce x tt e nfv) t' eq
   reduce x tt (TyAbs e) nfv {env = env} =
       TyAbs (reduce x (tyincr FZ tt)
-          (rewrite sym (insertAtMap (tyincr FZ) (weaken x) tt env) in e) ?reduce_1)
+          (rewrite sym (insertAtMap (tyincr FZ) x tt env) in e) ?reduce_1)
   reduce x tt (Fold e) nfv = Fold (reduce x tt e nfv)
   reduce x tt (Unfold e eq) nfv = Unfold (reduce x tt e nfv) eq
 
-  reduceAs : (x : Fin n) -> (tt : Ty tn) -> (as : Alts (insertAt (weaken x) tt env) ctrs t) ->
-      index (weaken x) (freeVarsAs as) = False -> Alts env ctrs t
+  reduceAs : (x : Fin (S n)) -> (tt : Ty tn) -> (as : Alts (insertAt x tt env) ctrs t) ->
+      index x (freeVarsAs as) = False -> Alts env ctrs t
   reduceAs x tt Fail nfv = Fail
-  reduceAs x tt (Alt e as) nfv = Alt ?reduceAs_1 (reduceAs x tt as (orRight nfv))
+  reduceAs x tt (Alt e as) nfv = Alt ?reduceAs_1 (reduceAs x tt as (orRightF nfv))
