@@ -115,8 +115,8 @@ progress' (Let e1 e2) with (progress' e2)
   progress' (Let e1 e2) | Step e2' ev = Step (Let e1 e2') (EvLet1 ev)
   progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh with (progress' e1)
     progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Value v with (splitLetVal e1 v)
-      progress' (Let (Let e11 e12) e2) | VarHeaded (IxZ t1 env) vh | Value v | Left (t2 ** e11 ** e12 ** (Refl, v', eq)) =
-          Step (Let e11 (Let e12 (incr (FS FZ) _ e2))) (EvLetLet vh v' eq)
+      progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Value v | Left (t2 ** e11 ** e12 ** (eq, v', eq')) =
+          rewrite eq in Step (Let e11 (Let e12 (incr (FS FZ) _ e2))) (EvLetLet vh v' eq')
       progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Value v | Right nlet =
           Step (Let e1 (subst (incr FZ _ e1) e2 vh)) (EvLet3 vh v nlet)
     progress' (Let e1 e2) | VarHeaded (IxZ t1 env) vh | Step e1' ev =

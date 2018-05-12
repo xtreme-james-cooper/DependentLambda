@@ -196,13 +196,24 @@ mutual
   reduce x tt (Case e as) nfv =
       Case (reduce x tt e (orLeftF nfv)) (reduceAs x tt as (orRightF nfv))
   reduce x tt (TyApp e t' eq) nfv = TyApp (reduce x tt e nfv) t' eq
-  reduce x tt (TyAbs e) nfv {env = env} =
-      TyAbs (reduce x (tyincr FZ tt)
-          (rewrite sym (insertAtMap (tyincr FZ) x tt env) in e) ?reduce_1)
+  reduce x tt (TyAbs e) nfv {env = env} {t = ForallTy t} =
+      let ep : Expr (insertAt x (tyincr FZ tt) (map (tyincr FZ) env)) t =
+          rewrite sym (insertAtMap (tyincr FZ) x tt env) in e
+      in let small_ep : Expr (insertAt x (tyincr FZ tt) (map (tyincr FZ) env)) t =
+          assert_smaller (TyAbs e) ep
+      in TyAbs (reduce x (tyincr FZ tt) small_ep (believe_me nfv))
   reduce x tt (Fold e) nfv = Fold (reduce x tt e nfv)
   reduce x tt (Unfold e eq) nfv = Unfold (reduce x tt e nfv) eq
 
   reduceAs : (x : Fin (S n)) -> (tt : Ty tn) -> (as : Alts (insertAt x tt env) ctrs t) ->
       index x (freeVarsAs as) = False -> Alts env ctrs t
   reduceAs x tt Fail nfv = Fail
-  reduceAs x tt (Alt e as) nfv = Alt ?reduceAs_1 (reduceAs x tt as (orRightF nfv))
+  reduceAs x tt (Alt {p = p} {xs = xs} e as) nfv {env = env} =
+      let ep : Expr (insertAt (extendFin p x) tt (xs ++ env)) t =
+          rewrite sym (appendInsert xs env x tt) in e
+      in let small_ep : Expr (insertAt (extendFin p x) tt (xs ++ env)) t =
+          assert_smaller (Alt e as) ep
+      in let nfvp : (index (extendFin' p x) (freeVars e) = False) =
+          orDropF (orLeftF nfv)
+      in Alt (reduce (extendFin p x) tt small_ep (believe_me nfvp))
+             (reduceAs x tt as (orRightF nfv))

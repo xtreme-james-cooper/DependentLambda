@@ -70,9 +70,7 @@ indexOfIndex : (x : Fin n) -> (ix : Index env a) -> finFromIndex ix = x -> index
 indexOfIndex FZ (IxZ a as) eq = Refl
 indexOfIndex FZ (IxS b x) Refl impossible
 indexOfIndex (FS x) (IxZ a as) Refl impossible
-indexOfIndex (FS x) (IxS b ix) eq = indexOfIndex x ix (fsDown eq)
-    where fsDown : FS i = FS j -> i = j
-          fsDown Refl = Refl
+indexOfIndex (FS x) (IxS b ix) eq = indexOfIndex x ix (FSinjective eq)
 
 export
 indexSubr : (b : t) -> (x : Fin (S n)) -> (ix : Index (insertAt x b env) a) ->

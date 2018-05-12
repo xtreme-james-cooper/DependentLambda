@@ -3,6 +3,10 @@ module BooleanHelper
 import Data.Vect
 import FinHelper
 
+export
+allEqsTheSame : (a : x = y) -> (b : x = y) -> a = b
+allEqsTheSame Refl Refl = Refl
+
 public export
 or : Bool -> Bool -> Bool
 or True x = True
