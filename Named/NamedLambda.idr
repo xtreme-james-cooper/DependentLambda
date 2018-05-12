@@ -1,9 +1,7 @@
-module NamedLambda
+module Named.NamedLambda
 
-import Data.Vect
-import Index
-import Ty
-import FiniteMap
+import public Type.Ty
+import public Utils.FiniteMap
 
 %default total
 

@@ -1,10 +1,7 @@
-module Values
+module Lambda.Values
 
-import BooleanHelper
-import Data.Vect
-import Index
-import Ty
-import Lambda
+import public Utils.BooleanHelper
+import public Lambda.Lambda
 
 %default total
 

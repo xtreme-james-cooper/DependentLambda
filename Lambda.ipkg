@@ -1,0 +1,19 @@
+package lambda
+
+modules = Examples
+        , Lambda.Evaluation.Determinism
+        , Lambda.Evaluation.DeterminismLemmas
+        , Lambda.Evaluation.Evaluation
+        , Lambda.Lambda
+        , Lambda.LambdaOperations
+        , Lambda.Values
+        , Named.NamedLambda
+        , Named.Unname
+        , Type.Ty
+        , Type.TyLemmas
+        , Utils.BooleanHelper
+        , Utils.FinHelper
+        , Utils.FiniteMap
+        , Utils.Index
+        , Utils.Iterate
+        , Utils.VectHelper

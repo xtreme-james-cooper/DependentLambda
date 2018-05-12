@@ -1,4 +1,4 @@
-module Iterate
+module Utils.Iterate
 
 %default total
 

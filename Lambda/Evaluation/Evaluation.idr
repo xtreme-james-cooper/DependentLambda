@@ -1,14 +1,7 @@
-module Evaluation
+module Lambda.Evaluation.Evaluation
 
-import Data.Vect
-import Lambda
-import Values
-import LambdaOperations
-import Index
-import VectHelper
-import BooleanHelper
-import Iterate
-import Ty
+import public Lambda.LambdaOperations
+import public Utils.Iterate
 
 %default total
 

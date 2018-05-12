@@ -1,9 +1,6 @@
-module TyLemmas
+module Type.TyLemmas
 
-import Data.Vect
-import VectHelper
-import FinHelper
-import Ty
+import public Type.Ty
 
 %default total
 

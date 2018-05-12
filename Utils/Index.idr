@@ -1,7 +1,6 @@
-module Index
+module Utils.Index
 
-import Data.Vect
-import VectHelper
+import public Utils.VectHelper
 
 %default total
 

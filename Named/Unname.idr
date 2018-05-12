@@ -1,11 +1,7 @@
-module Unname
+module Named.Unname
 
-import Data.Vect
-import Index
-import Ty
-import Lambda
-import NamedLambda
-import FiniteMap
+import public Lambda.Lambda
+import public Named.NamedLambda
 
 %default total
 

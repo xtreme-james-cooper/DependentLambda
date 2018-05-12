@@ -1,6 +1,6 @@
-module FinHelper
+module Utils.FinHelper
 
-import Data.Fin
+import public Data.Fin
 
 %default total
 

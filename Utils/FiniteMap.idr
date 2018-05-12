@@ -1,7 +1,6 @@
-module FiniteMap
+module Utils.FiniteMap
 
-import Data.Vect
-import Index
+import public Utils.Index
 
 %default total
 

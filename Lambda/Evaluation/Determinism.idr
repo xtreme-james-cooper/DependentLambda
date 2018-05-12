@@ -1,14 +1,6 @@
-module Determinism
+module Lambda.Evaluation.Determinism
 
-import Evaluation
-import Lambda
-import LambdaOperations
-import Values
-import Data.Vect
-import Index
-import Ty
-import DeterminismLemmas
-import BooleanHelper
+import public Lambda.Evaluation.DeterminismLemmas
 
 %default total
 

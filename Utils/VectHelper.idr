@@ -1,7 +1,7 @@
-module VectHelper
+module Utils.VectHelper
 
-import Data.Vect
-import FinHelper
+import public Data.Vect
+import public Utils.FinHelper
 
 %default total
 

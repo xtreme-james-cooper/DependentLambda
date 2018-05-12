@@ -1,8 +1,6 @@
-module Ty
+module Type.Ty
 
-import Data.Vect
-import VectHelper
-import FinHelper
+import public Utils.VectHelper
 
 %default total
 

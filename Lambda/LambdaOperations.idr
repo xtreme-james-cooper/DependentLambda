@@ -1,14 +1,7 @@
-module LambdaOperations
+module Lambda.LambdaOperations
 
-import Data.Vect
-import Lambda
-import Values
-import VectHelper
-import FinHelper
-import BooleanHelper
-import Index
-import Ty
-import TyLemmas
+import public Lambda.Values
+import public Type.TyLemmas
 
 %default total
 

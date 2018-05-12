@@ -1,7 +1,7 @@
-module BooleanHelper
+module Utils.BooleanHelper
 
-import Data.Vect
-import FinHelper
+import public Data.Vect
+import public Utils.FinHelper
 
 export
 allEqsTheSame : (a : x = y) -> (b : x = y) -> a = b

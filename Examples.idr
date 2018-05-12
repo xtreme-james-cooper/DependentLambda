@@ -1,15 +1,7 @@
 module Examples
 
-import Data.Vect
-import Index
-import Ty
-import Lambda
-import Evaluation
-import Iterate
-import Determinism
-import FiniteMap
-import NamedLambda
-import Unname
+import Lambda.Evaluation.Determinism
+import Named.Unname
 
 %default total
 

@@ -1,8 +1,7 @@
-module Lambda
+module Lambda.Lambda
 
-import Data.Vect
-import Index
-import Ty
+import public Utils.Index
+import public Type.Ty
 
 %default total
 
