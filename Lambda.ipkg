@@ -9,12 +9,15 @@ modules = Examples
         , Lambda.Values
         , Named.NamedLambda
         , Named.Unname
+        , Stack.Evaluation.Evaluation
+        , Stack.Stack
         , Type.Ty
         , Type.TyLemmas
         , Utils.BasicsHelper
         , Utils.BooleanHelper
         , Utils.FinHelper
         , Utils.FiniteMap
+        , Utils.Heap
         , Utils.Index
         , Utils.Iterate
         , Utils.VectHelper
