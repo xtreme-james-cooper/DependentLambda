@@ -1,6 +1,7 @@
 module Lambda.Evaluation.DeterminismLemmas
 
 import public Lambda.Evaluation.Evaluation
+import public Utils.BasicsHelper
 
 %default total
 

@@ -3,9 +3,7 @@ module Utils.BooleanHelper
 import public Data.Vect
 import public Utils.FinHelper
 
-export
-allEqsTheSame : (a : x = y) -> (b : x = y) -> a = b
-allEqsTheSame Refl Refl = Refl
+%default total
 
 public export
 or : Bool -> Bool -> Bool
