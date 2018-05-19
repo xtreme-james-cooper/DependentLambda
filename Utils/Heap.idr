@@ -23,7 +23,8 @@ hLookup : Heap henv f -> (n : Nat) -> (lt : LT n k) -> f (henv n lt)
 hLookup h n = h n
 
 export
-hUpdate : Heap henv f -> (n : Nat) -> (lt : LT n k) -> f (henv n lt) -> Heap henv f
+hUpdate : {henv : HeapEnv k t} -> Heap henv f -> (n : Nat) -> (lt : LT n k) ->
+    f (henv n lt) -> Heap henv f
 hUpdate {k = k} h n lt a y lt' = case decEq y n of
     Yes Refl => rewrite allLtesTheSame lt' lt in a
     No neq => h y lt'

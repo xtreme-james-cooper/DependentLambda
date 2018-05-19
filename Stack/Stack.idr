@@ -6,27 +6,40 @@ import public Utils.Heap
 %default total
 
 public export
-data IsSValue : Expr env t -> Type where
-  IntVal : IsSValue (Num n)
-  ArrowVal : IsSValue (Abs t e)
-  DataVal : IsSValue (Constr tag es)
-  ForallVal : IsSValue (TyAbs e)
-  FixVal : IsSValue (Fold e)
+data SValue : Vect n (Ty tn) -> Ty tn -> Type where
+  IntVal : Int -> SValue env IntTy
+  ArrowVal : (t1 : Ty tn) -> Expr (t1 :: env) t2 -> SValue env (ArrowTy t1 t2)
+  DataVal : {ctrs : Vect m (n ** Vect n (Ty tn))} -> (tag : Fin m) ->
+      VarArgs env (snd (index tag ctrs)) -> SValue env (DataTy ctrs)
+  ForallVal : Expr (map (tyincr FZ) env) t -> SValue env (ForallTy t)
+  FixVal : Expr env (tsubst FZ (FixTy t) t) -> SValue env (FixTy t)
+
+export
+devalue : SValue env t -> Expr env t
+devalue (IntVal n) = Num n
+devalue (ArrowVal t1 e) = Abs t1 e
+devalue (DataVal tag xs) = Constr tag xs
+devalue (ForallVal e) = TyAbs e
+devalue (FixVal e) = Fold e
 
 public export
 data HeapEntry : Type where
   HeapE : Vect n (Ty tn) -> Ty tn -> HeapEntry
 
 public export
+exprOfHeapType : HeapEntry -> Type
+exprOfHeapType (HeapE env t) = Expr env t
+
+public export
 SHeap : HeapEnv n HeapEntry -> Type
-SHeap h = Heap h (\(HeapE env t) => (e : Expr env t ** Maybe (IsSValue e)))
+SHeap h = Heap h exprOfHeapType
 
 public export
 data Frame : HeapEnv m HeapEntry -> Vect n (Ty tn) -> Ty tn -> Ty tn -> Type where
-  SUpdate : (n : Nat) -> LT n m -> Frame h env t t
+  SUpdate : {h : HeapEnv m HeapEntry} -> (n : Nat) -> (lt : LT n m) ->
+      h n lt = HeapE env t -> Frame h env t t
   SPrim1 : (Int -> Int -> Int) -> Expr env IntTy -> Frame h env IntTy IntTy
-  SPrim2 : (Int -> Int -> Int) -> (e1 : Expr env IntTy) -> IsSValue e1 ->
-      Frame h env IntTy IntTy
+  SPrim2 : (Int -> Int -> Int) -> Int -> Frame h env IntTy IntTy
   SIsZero : Expr env t -> Expr env t -> Frame h env IntTy t
   SApp : Expr env t1 -> Frame h env (ArrowTy t1 t2) t2
   SLet : (n : Nat) -> {h : HeapEnv m HeapEntry} ->
@@ -43,7 +56,8 @@ data Stack : HeapEnv m HeapEntry -> Vect n (Ty tn) -> Ty tn -> Ty tn -> Type whe
 
 public export
 data StackState : Ty tn -> Type where
-  SEval : {env : Vect n (Ty tn)} -> {h : HeapEnv m HeapEntry} -> Expr env t1 ->
-      Stack h env t1 t2 -> Vect n (p ** LT p m) -> SHeap h -> StackState t2
-  SReturn : {env : Vect n (Ty tn)} -> {h : HeapEnv m HeapEntry} -> (e : Expr env t1) ->
-      IsSValue e -> Stack h env t1 t2 -> Vect n (p ** LT p m) -> SHeap h -> StackState t2
+  SEval : {env : Vect n (Ty tn)} -> {henv : HeapEnv m HeapEntry} -> Expr env t1 ->
+      Stack henv env t1 t2 -> Vect n (p ** LT p m) -> SHeap henv -> StackState t2
+  SReturn : {env : Vect n (Ty tn)} -> {henv : HeapEnv m HeapEntry} ->
+      SValue env t1 -> Stack henv env t1 t2 -> Vect n (p ** LT p m) -> SHeap henv ->
+          StackState t2
