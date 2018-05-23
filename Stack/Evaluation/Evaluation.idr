@@ -8,7 +8,7 @@ import public Utils.Iterate
 
 public export
 data Eval : StackState t -> StackState t -> Type where
-  EvVar : {henv : HeapEnv k HeapEntry} -> {h : SHeap henv} -> {e : Expr env t} ->
+  EvVar : {henv : HeapEnv k HeapEntry} -> {h : SHeap k henv} -> {e : Expr env t} ->
       {m : Vect q (p ** LT p k)} -> {lt : LT n k} ->
           index (finFromIndex ix) m = (n ** lt) -> hLookup h n lt = e ->
               Eval (SEval (Var ix) s m h) (SEval e (SUpdate n lt pff :: s) m h)
@@ -17,7 +17,10 @@ data Eval : StackState t -> StackState t -> Type where
   EvIsZero : Eval (SEval (IsZero e1 e2 e3) s m h) (SEval e1 (SIsZero e2 e3 :: s) m h)
   EvApp : Eval (SEval (App e1 e2) s m h) (SEval e1 (SApp e2 :: s) m h)
   EvAbs : Eval (SEval (Abs t1 e) s m h) (SReturn (ArrowVal t1 e) s m h)
-  -- EvLet
+  -- EvLet : {henv : HeapEnv k HeapEntry} -> {h : SHeap k henv} -> {e1 : Expr env t} ->
+  --     Eval (SEval (Let e1 e2) s m h)
+  --          (SEval e2 (SLet k eq :: s) ((k ** lt) :: m)
+  --                 (hAlloc {henv = henv} {f = Stack.exprOfHeapType} h (HeapE env t) e1))
   EvFix : Eval (SEval (Fix e) s m h) (SEval e (SFix :: s) m h)
   EvConstr : Eval (SEval (Constr tag xs) s m h) (SReturn (DataVal tag xs) s m h)
   EvCase : Eval (SEval (Case e as) s m h) (SEval e (SCase as :: s) m h)

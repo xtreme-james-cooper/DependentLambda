@@ -31,33 +31,34 @@ exprOfHeapType : HeapEntry -> Type
 exprOfHeapType (HeapE env t) = Expr env t
 
 public export
-SHeap : HeapEnv n HeapEntry -> Type
-SHeap h = Heap h exprOfHeapType
+SHeap : (k : Nat) -> HeapEnv k HeapEntry -> Type
+SHeap k h = Heap k h exprOfHeapType
 
 public export
-data Frame : HeapEnv m HeapEntry -> Vect n (Ty tn) -> Ty tn -> Ty tn -> Type where
+data Frame : HeapEnv m HeapEntry -> Vect n (Ty tn) -> Vect n' (Ty tn) -> Ty tn ->
+    Ty tn -> Type where
   SUpdate : {h : HeapEnv m HeapEntry} -> (n : Nat) -> (lt : LT n m) ->
-      h n lt = HeapE env t -> Frame h env t t
-  SPrim1 : (Int -> Int -> Int) -> Expr env IntTy -> Frame h env IntTy IntTy
-  SPrim2 : (Int -> Int -> Int) -> Int -> Frame h env IntTy IntTy
-  SIsZero : Expr env t -> Expr env t -> Frame h env IntTy t
-  SApp : Expr env t1 -> Frame h env (ArrowTy t1 t2) t2
+      h n lt = HeapE env t -> Frame h env env t t
+  SPrim1 : (Int -> Int -> Int) -> Expr env IntTy -> Frame h env env IntTy IntTy
+  SPrim2 : (Int -> Int -> Int) -> Int -> Frame h env env IntTy IntTy
+  SIsZero : Expr env t -> Expr env t -> Frame h env env IntTy t
+  SApp : Expr env t1 -> Frame h env env (ArrowTy t1 t2) t2
   SLet : (n : Nat) -> {h : HeapEnv m HeapEntry} ->
-      h n lt = HeapE env t1 -> Frame h (t1 :: env) t2 t2
-  SFix : Frame h env (ArrowTy t t) t
-  SCase : Alts env ctrs t -> Frame h env (DataTy ctrs) t
-  STyApp : (t' : Ty tn) -> tt = tsubst FZ t' t -> Frame h env (ForallTy t) tt
-  SUnfold : tt = tsubst FZ (FixTy t) t -> Frame h env (FixTy t) tt
+      h n lt = HeapE env t1 -> Frame h (t1 :: env) env t2 t2
+  SFix : Frame h env env (ArrowTy t t) t
+  SCase : Alts env ctrs t -> Frame h env env (DataTy ctrs) t
+  STyApp : (t' : Ty tn) -> tt = tsubst FZ t' t -> Frame h env env (ForallTy t) tt
+  SUnfold : tt = tsubst FZ (FixTy t) t -> Frame h env env (FixTy t) tt
 
 public export
 data Stack : HeapEnv m HeapEntry -> Vect n (Ty tn) -> Ty tn -> Ty tn -> Type where
   Nil : Stack h [] t t
-  (::) : Frame h env t1 t2 -> Stack h env t2 t3 -> Stack h env t1 t3
+  (::) : Frame h env env' t1 t2 -> Stack h env' t2 t3 -> Stack h env t1 t3
 
 public export
 data StackState : Ty tn -> Type where
   SEval : {env : Vect n (Ty tn)} -> {henv : HeapEnv m HeapEntry} -> Expr env t1 ->
-      Stack henv env t1 t2 -> Vect n (p ** LT p m) -> SHeap henv -> StackState t2
+      Stack henv env t1 t2 -> Vect n (p ** LT p m) -> SHeap m henv -> StackState t2
   SReturn : {env : Vect n (Ty tn)} -> {henv : HeapEnv m HeapEntry} ->
-      SValue env t1 -> Stack henv env t1 t2 -> Vect n (p ** LT p m) -> SHeap henv ->
+      SValue env t1 -> Stack henv env t1 t2 -> Vect n (p ** LT p m) -> SHeap m henv ->
           StackState t2

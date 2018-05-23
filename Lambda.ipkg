@@ -9,6 +9,7 @@ modules = Examples
         , Lambda.Values
         , Named.NamedLambda
         , Named.Unname
+        , Stack.Evaluation.Determinism
         , Stack.Evaluation.Evaluation
         , Stack.Stack
         , Type.Ty
