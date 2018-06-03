@@ -63,52 +63,45 @@ subst e' (Case e as) (CaseVar vh) = Case (subst e' e vh) as
 subst e' (TyApp e t eq) (TyAppVar vh) = TyApp (subst e' e vh) t eq
 subst e' (Unfold e eq) (UnfoldVar vh) = Unfold (subst e' e vh) eq
 
-varsSubst : (x : Fin (S n)) -> Index env t' -> VarArgs (insertAt x t' env) ts -> VarArgs env ts
-varsSubst x ix' [] = []
-varsSubst x ix' (ix :: ixs) = indexSubst x ix' ix :: varsSubst x ix' ixs
+varsMap : {env : Vect n (Ty tn)} -> {env' : Vect m (Ty tn)} ->
+    IndexMap env env' -> VarArgs env ts -> VarArgs env' ts
+varsMap m [] = []
+varsMap m (ix :: ixs) = m ix :: varsMap m ixs
 
 mutual
-  varSubst : (x : Fin (S n)) -> Index env t' -> Expr (insertAt x t' env) t -> Expr env t
-  varSubst x ix' (Var ix) = Var (indexSubst x ix' ix)
-  varSubst x ix' (Num n) = Num n
-  varSubst x ix' (Prim f e1 e2) = Prim f (varSubst x ix' e1) (varSubst x ix' e2)
-  varSubst x ix' (IsZero e1 e2 e3) =
-      IsZero (varSubst x ix' e1) (varSubst x ix' e2) (varSubst x ix' e3)
-  varSubst x ix' (App e1 e2) = App (varSubst x ix' e1) (varSubst x ix' e2)
-  varSubst x ix' (Abs t1 e) = Abs t1 (varSubst (FS x) (IxS _ ix') e)
-  varSubst x ix' (Let e1 e2) = Let (varSubst x ix' e1) (varSubst (FS x) (IxS _ ix') e2)
-  varSubst x ix' (Fix e) = Fix (varSubst x ix' e)
-  varSubst x ix' (Constr tag es) = Constr tag (varsSubst x ix' es)
-  varSubst x ix' (Case e as) = Case (varSubst x ix' e) (varSubsta x ix' as)
-  varSubst x ix' (TyApp e t eq) = TyApp (varSubst x ix' e) t eq
-  varSubst x ix' (TyAbs e) {t' = t'} {env = env} {t = ForallTy t} =
-      let ep : Expr (insertAt x (tyincr FZ t') (map (tyincr FZ) env)) t =
-          rewrite sym (insertAtMap (tyincr FZ) x t' env) in e
-      in let small_ep : Expr (insertAt x (tyincr FZ t') (map (tyincr FZ) env)) t =
-          assert_smaller (TyAbs e) ep
-      in TyAbs (varSubst x (indexMap (tyincr FZ) ix') small_ep)
-  varSubst x ix' (Fold e) = Fold (varSubst x ix' e)
-  varSubst x ix' (Unfold e eq) = Unfold (varSubst x ix' e) eq
+  export
+  varMap : {env : Vect n (Ty tn)} -> {env' : Vect m (Ty tn)} ->
+      IndexMap env env' -> Expr env t -> Expr env' t
+  varMap m (Var x) = Var (m x)
+  varMap m (Num n) = Num n
+  varMap m (Prim f e1 e2) = Prim f (varMap m e1) (varMap m e2)
+  varMap m (IsZero e1 e2 e3) =
+      IsZero (varMap m e1) (varMap m e2) (varMap m e3)
+  varMap m (App e1 e2) = App (varMap m e1) (varMap m e2)
+  varMap m (Abs t1 e) = Abs t1 (varMap (extendIndexMap m t1) e)
+  varMap m (Let e1 e2) = Let (varMap m e1) (varMap (extendIndexMap m _) e2)
+  varMap m (Fix e) = Fix (varMap m e)
+  varMap m (Constr tag xs) = Constr tag (varsMap m xs)
+  varMap m (Case e as) = Case (varMap m e) (varMapa m as)
+  varMap m (TyApp e t' eq) = TyApp (varMap m e) t' eq
+  varMap m (TyAbs e) = TyAbs (varMap (mapIndexMap (tyincr FZ) m) e)
+  varMap m (Fold e) = Fold (varMap m e)
+  varMap m (Unfold e eq) = Unfold (varMap m e) eq
 
-  varSubsta : (x : Fin (S n)) -> Index env t' -> Alts (insertAt x t' env) ctrs t -> Alts env ctrs t
-  varSubsta x ix' Fail = Fail
-  varSubsta {t' = t'} {env = env} {ctrs = (p ** xs) :: ctrs} x ix' (Alt e as) =
-      let ep : Expr (insertAt (extendFin p x) t' (xs ++ env)) t =
-          rewrite sym (appendInsert xs env x t') in e
-      in let small_ep : Expr (insertAt (extendFin p x) t' (xs ++ env)) t =
-          assert_smaller (Alt e as) ep
-      in Alt (varSubst (extendFin p x) (indexLeftExtend xs ix') small_ep)
-             (varSubsta x ix' as)
+  varMapa : {env : Vect n (Ty tn)} -> {env' : Vect m (Ty tn)} ->
+      IndexMap env env' -> Alts env ctrs t -> Alts env' ctrs t
+  varMapa m Fail = Fail
+  varMapa m (Alt e as) =
+      Alt (varMap (extendsIndexMap m _) e) (varMapa m as)
 
-export
-multisubst : VarArgs env ts -> Expr (ts ++ env) t -> Expr env t
-multisubst [] e = e
-multisubst {ts = t :: ts} (ix :: ixs) e =
-    multisubst ixs (varSubst FZ (indexLeftExtend ts ix) e)
+indexMapFromVarArgs : VarArgs env xs -> IndexMap (xs ++ env) env
+indexMapFromVarArgs [] ix = ix
+indexMapFromVarArgs (x :: xs) (IxZ _ _) = x
+indexMapFromVarArgs (x :: xs) (IxS _ ix) = indexMapFromVarArgs xs ix
 
 export
 altEval : (x : Fin n) -> Alts env ctrs t -> VarArgs env (snd (index x ctrs)) -> Expr env t
-altEval FZ (Alt e as) es = multisubst es e
+altEval FZ (Alt e as) es = varMap (indexMapFromVarArgs es) e
 altEval (FS x) (Alt e as) es = altEval x as es
 
 tyVarsSubst : (x : Fin (S tn)) -> (t' : Ty tn) -> VarArgs env ctr ->

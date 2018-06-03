@@ -95,3 +95,24 @@ export
 indexMap : (f : a -> b) -> Index env t -> Index (map f env) (f t)
 indexMap f (IxZ a as) = IxZ (f a) (map f as)
 indexMap f (IxS b ix) = IxS (f b) (indexMap f ix)
+
+public export
+IndexMap : Vect n t -> Vect m t -> Type
+IndexMap env env' = {v : t} -> Index env v -> Index env' v
+
+export
+extendIndexMap : IndexMap as as' -> (t : a) -> IndexMap (t :: as) (t :: as')
+extendIndexMap m t (IxZ t as) = IxZ t _
+extendIndexMap m t (IxS t ix) = IxS t (m ix)
+
+export
+extendsIndexMap : IndexMap as as' -> (bs : Vect n a) ->
+    IndexMap (bs ++ as) (bs ++ as')
+extendsIndexMap m [] = m
+extendsIndexMap m (b :: bs) = extendIndexMap (extendsIndexMap m bs) b
+
+export
+mapIndexMap : (f : a -> b) -> IndexMap env env' ->
+    IndexMap (map f env) (map f env')
+mapIndexMap {env = t :: env} f m (IxZ _ _) = indexMap f (m (IxZ t env))
+mapIndexMap {env = t :: env} f m (IxS _ ix) = mapIndexMap f (m . IxS t) ix
