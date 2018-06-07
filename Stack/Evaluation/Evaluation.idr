@@ -1,117 +1,102 @@
 module Stack.Evaluation.Evaluation
 
 import public Stack.Stack
-import public Lambda.LambdaOperations
 import public Utils.Iterate
 
 %default total
 
 public export
 data Eval : StackState t -> StackState t -> Type where
-  EvVar : {henv : HeapEnv k HeapEntry} -> {h : SHeap k henv} -> {e : Expr env t} ->
-      {m : Vect q (p ** LT p k)} -> {lt : LT n k} ->
-          index (finFromIndex ix) m = (n ** lt) -> hLookup h n lt = e ->
-              Eval (SEval (Var ix) s m h) (SEval e (SUpdate n lt pff :: s) m h)
-  EvNum : Eval (SEval (Num n) s m h) (SReturn (IntVal n) s m h)
-  EvPrim : Eval (SEval (Prim f e1 e2) s m h) (SEval e1 (SPrim1 f e2 :: s) m h)
-  EvIsZero : Eval (SEval (IsZero e1 e2 e3) s m h) (SEval e1 (SIsZero e2 e3 :: s) m h)
-  EvApp : Eval (SEval (App e1 e2) s m h) (SEval e1 (SApp e2 :: s) m h)
-  EvAbs : Eval (SEval (Abs t1 e) s m h) (SReturn (ArrowVal t1 e) s m h)
-  -- EvLet : {henv : HeapEnv k HeapEntry} -> {h : SHeap k henv} -> {e1 : Expr env t} ->
-  --     Eval (SEval (Let e1 e2) s m h)
-  --          (SEval e2 (SLet k eq :: s) ((k ** lt) :: m)
-  --                 (hAlloc {henv = henv} {f = Stack.exprOfHeapType} h (HeapE env t) e1))
-  EvFix : Eval (SEval (Fix e) s m h) (SEval e (SFix :: s) m h)
-  EvConstr : Eval (SEval (Constr tag xs) s m h) (SReturn (DataVal tag xs) s m h)
-  EvCase : Eval (SEval (Case e as) s m h) (SEval e (SCase as :: s) m h)
-  EvTyApp : Eval (SEval (TyApp e t' eq) s m h) (SEval e (STyApp t' eq :: s) m h)
-  EvTyAbs : Eval (SEval (TyAbs e) s m h) (SReturn (ForallVal e) s m h)
-  EvFold : Eval (SEval (Fold e) s m h) (SReturn (FixVal e) s m h)
-  EvUnfold : Eval (SEval (Unfold e eq) s m h) (SEval e (SUnfold eq :: s) m h)
+  EvVar : Eval (SEval h (Var ix) s) (SEval h (hLookup h (finFromIndex ix))
+      (SUpdate (finFromIndex ix) eq :: s))
+  EvNum : Eval (SEval h (Num n) s) (SReturn h (Num n) IntVal s)
+  EvPrim : Eval (SEval h (Prim f e1 e2) s) (SEval h e1 (SPrim1 f e2 :: s))
+  EvIsZero : Eval (SEval h (IsZero e1 e2 e3) s) (SEval h e1 (SIsZero e2 e3 :: s))
+  EvApp : Eval (SEval h (App e1 e2) s) (SEval h e1 (SApp e2 :: s))
+  EvAbs : Eval (SEval h (Abs t1 e) s) (SReturn h (Abs t1 e) ArrowVal s)
+  EvLet : Eval (SEval h (Let e1 e2) s)
+      (SEval (hMap (incr FZ _) (hAlloc h e1)) e2 (sIncr _ s))
+  EvFix : Eval (SEval h (Fix e) s) (SEval h e (SFix :: s))
+  EvConstr : Eval (SEval h (Constr tag xs) s) (SReturn h (Constr tag xs) DataVal s)
+  EvCase : Eval (SEval h (Case e as) s) (SEval h e (SCase as :: s))
+  EvTyApp : Eval (SEval h (TyApp e t' eq) s) (SEval h e (STyApp t' eq :: s))
+  EvTyAbs : Eval (SEval h (TyAbs e) s) (SReturn h (TyAbs e) ForallVal s)
+  EvFold : Eval (SEval h (Fold e) s) (SReturn h (Fold e) FixVal s)
+  EvUnfold : Eval (SEval h (Unfold e eq) s) (SEval h e (SUnfold eq :: s))
 
-  RetUpdate : Eval (SReturn v (SUpdate n lt eq :: s) m h)
-      (SReturn v s m (hUpdate h n lt e))
-  RetPrim1 : Eval (SReturn (IntVal n1) (SPrim1 f e2 :: s) m h)
-      (SEval e2 (SPrim2 f n1 :: s) m h)
-  RetPrim2 : Eval (SReturn (IntVal n2) (SPrim2 f n1 :: s) m h)
-      (SReturn (IntVal (f n1 n2)) s m h)
-  RetIsZeroZ : Eval (SReturn (IntVal 0) (SIsZero e2 e3 :: s) m h) (SEval e2 s m h)
+  RetUpdate : Eval (SReturn h e v (SUpdate n eq :: s))
+      (SReturn (hUpdate h n e) e v s)
+  RetPrim1 : Eval (SReturn h (Num n1) IntVal (SPrim1 f e2 :: s))
+      (SEval h e2 (SPrim2 f n1 :: s))
+  RetPrim2 : Eval (SReturn h (Num n2) IntVal (SPrim2 f n1 :: s))
+      (SReturn h (Num (f n1 n2)) IntVal s)
+  RetIsZeroZ : Eval (SReturn h (Num 0) IntVal (SIsZero e2 e3 :: s))
+      (SEval h e2 s)
   RetIsZeroS : Not (n = 0) ->
-      Eval (SReturn (IntVal n) (SIsZero e2 e3 :: s) m h) (SEval e3 s m h)
-  RetApp : Eval (SReturn (ArrowVal t e1) (SApp e2 :: s) m h) (SEval (Let e2 e1) s m h)
-  -- RetLet : Eval (SReturn e v (SLet n eq :: s) (k :: m) h) (SReturn e v s m h)
-  RetFix : Eval (SReturn (ArrowVal t e) (SFix :: s) m h)
-      (SEval (Let (Fix (Abs t e)) e) s m h)
-  RetCase : Eval (SReturn (DataVal tag xs) (SCase as :: s) m h)
-      (SEval (altEval tag as es) s m h)
-  RetTyApp : Eval (SReturn (ForallVal e) (STyApp t' eq :: s) m h)
-      (SEval (tySubst t e) s m h)
-  RetUnfold : Eval (SReturn (FixVal e) (SUnfold eq :: s) m h) (SEval e s m h)
+      Eval (SReturn h (Num n) IntVal (SIsZero e2 e3 :: s)) (SEval h e3 s)
+  RetApp : Eval (SReturn h (Abs t e1) ArrowVal (SApp e2 :: s))
+      (SEval h (Let e2 e1) s)
+  RetFix : Eval (SReturn h (Abs t e) ArrowVal (SFix :: s))
+      (SEval h (Let (Fix (Abs t e)) e) s)
+  RetCase : Eval (SReturn h (Constr tag xs) DataVal (SCase as :: s))
+      (SEval h (altEval tag as es) s)
+  RetTyApp : Eval (SReturn h (TyAbs e) ForallVal (STyApp t' eq :: s))
+      (SEval h (tySubst t e) s)
+  RetUnfold : Eval (SReturn h (Fold e) FixVal (SUnfold eq :: s)) (SEval h e s)
 
 export
 data IsComplete : StackState t -> Type where
-  Complete : IsComplete (SReturn v [] m h)
+  Complete : IsComplete (SReturn h e v [])
 
 export
 progress : (s : StackState t) -> Either (IsComplete s) (s' : StackState t ** Eval s s')
-progress (SEval (Var ix) s m h) with (index (finFromIndex ix) m)
-  progress (SEval (Var ix) s m h) | (n ** lt) with (hLookup h n lt)
-    progress (SEval (Var ix) s m h) | (n ** lt) | e =
-        Right ?arcl --(SEval e (SUpdate n lt ?pff :: s) m h ** ?argl_2)
-
-    -- EvVar : {henv : HeapEnv k HeapEntry} -> {h : SHeap henv} -> {e : Expr env t} ->
-    --     {m : Vect q (p ** LT p k)} -> {lt : LT n k} ->
-    --         index (finFromIndex ix) m = (n ** lt) -> hLookup h n lt = e ->
-    --             Eval (SEval (Var ix) s m h) (SEval e (SUpdate n lt pff :: s) m h)
-
-progress (SEval (Num n) s m h) =
-    Right (SReturn (IntVal n) s m h ** EvNum)
-progress (SEval (Prim f e1 e2) s m h) =
-    Right (SEval e1 (SPrim1 f e2 :: s) m h ** EvPrim)
-progress (SEval (IsZero e1 e2 e3) s m h) =
-    Right (SEval e1 (SIsZero e2 e3 :: s) m h ** EvIsZero)
-progress (SEval (App e1 e2) s m h) =
-    Right (SEval e1 (SApp e2 :: s) m h ** EvApp)
-progress (SEval (Abs t1 e) s m h) =
-    Right (SReturn (ArrowVal t1 e) s m h ** EvAbs)
-progress (SEval (Let e1 e2) s m h) = ?argl_9
-progress (SEval (Fix e) s m h) =
-    Right (SEval e (SFix :: s) m h ** EvFix)
-progress (SEval (Constr tag xs) s m h) =
-    Right (SReturn (DataVal tag xs) s m h ** EvConstr)
-progress (SEval (Case e as) s m h) =
-    Right (SEval e (SCase as :: s) m h ** EvCase)
-progress (SEval (TyApp e t' eq) s m h) =
-    Right (SEval e (STyApp t' eq :: s) m h ** EvTyApp)
-progress (SEval (TyAbs e) s m h) =
-    Right (SReturn (ForallVal e) s m h ** EvTyAbs)
-progress (SEval (Fold e) s m h) =
-    Right (SReturn (FixVal e) s m h ** EvFold)
-progress (SEval (Unfold e eq) s m h) =
-    Right (SEval e (SUnfold eq :: s) m h ** EvUnfold)
-progress (SReturn v [] m h) = Left Complete
-progress (SReturn {henv = henv} v (SUpdate n lt eq :: s) m h) =
-    Right (SReturn v s m (hUpdate {henv = henv} h n lt (rewrite eq in devalue v)) ** RetUpdate)
-progress (SReturn (IntVal n1) (SPrim1 f e2 :: s) m h) =
-    Right (SEval e2 (SPrim2 f n1 :: s) m h ** RetPrim1)
-progress (SReturn (IntVal n2) (SPrim2 f n1 :: s) m h) =
-    Right (SReturn (IntVal (f n1 n2)) s m h ** RetPrim2)
-progress (SReturn (IntVal n) (SIsZero e2 e3 :: s) m h) with (decEq n 0)
-  progress (SReturn (IntVal 0) (SIsZero e2 e3 :: s) m h) | Yes Refl =
-      Right (SEval e2 s m h ** RetIsZeroZ)
-  progress (SReturn (IntVal n) (SIsZero e2 e3 :: s) m h) | No neq =
-      Right (SEval e3 s m h ** RetIsZeroS neq)
-progress (SReturn (ArrowVal t e1) (SApp e2 :: s) m h) =
-    Right (SEval (Let e2 e1) s m h ** RetApp)
-progress (SReturn v (SLet n eq :: s) m h) = ?argl_8
-progress (SReturn (ArrowVal t e) (SFix :: s) m h) =
-    Right (SEval (Let (Fix (Abs t e)) e) s m h ** RetFix)
-progress (SReturn (DataVal tag xs) (SCase as :: s) m h) =
-    Right (SEval (altEval tag as xs) s m h ** RetCase)
-progress (SReturn (ForallVal e) (STyApp t' Refl :: s) m h) =
-    Right (SEval (tySubst t' e) s m h ** RetTyApp)
-progress (SReturn (FixVal e) (SUnfold Refl :: s) m h) =
-    Right (SEval e s m h ** RetUnfold)
+progress (SEval h (Var ix) s) =
+    Right (SEval h (hLookup h (finFromIndex ix))
+        (SUpdate (finFromIndex ix) (indexOfIndex (finFromIndex ix) ix Refl) :: s)
+            ** EvVar)
+progress (SEval h (Num n) s) = Right (SReturn h (Num n) IntVal s ** EvNum)
+progress (SEval h (Prim f e1 e2) s) =
+    Right (SEval h e1 (SPrim1 f e2 :: s) ** EvPrim)
+progress (SEval h (IsZero e1 e2 e3) s) =
+    Right (SEval h e1 (SIsZero e2 e3 :: s) ** EvIsZero)
+progress (SEval h (App e1 e2) s) = Right (SEval h e1 (SApp e2 :: s) ** EvApp)
+progress (SEval h (Abs t1 e) s) =
+    Right (SReturn h (Abs t1 e) ArrowVal s ** EvAbs)
+progress (SEval h (Let e1 e2) s) =
+    Right (SEval (hMap (incr FZ _) (hAlloc h e1)) e2 (sIncr _ s) ** EvLet)
+progress (SEval h (Fix e) s) = Right (SEval h e (SFix :: s) ** EvFix)
+progress (SEval h (Constr tag xs) s) =
+    Right (SReturn h (Constr tag xs) DataVal s ** EvConstr)
+progress (SEval h (Case e as) s) = Right (SEval h e (SCase as :: s) ** EvCase)
+progress (SEval h (TyApp e t' eq) s) =
+    Right (SEval h e (STyApp t' eq :: s) ** EvTyApp)
+progress (SEval h (TyAbs e) s) =
+    Right (SReturn h (TyAbs e) ForallVal s ** EvTyAbs)
+progress (SEval h (Fold e) s) = Right (SReturn h (Fold e) FixVal s ** EvFold)
+progress (SEval h (Unfold e eq) s) =
+    Right (SEval h e (SUnfold eq :: s) ** EvUnfold)
+progress (SReturn h e v []) = Left Complete
+progress (SReturn h e v (SUpdate n Refl :: s)) =
+    Right (SReturn (hUpdate h n e) e v s ** RetUpdate)
+progress (SReturn h (Num n1) IntVal (SPrim1 f e2 :: s)) =
+    Right (SEval h e2 (SPrim2 f n1 :: s) ** RetPrim1)
+progress (SReturn h (Num n2) IntVal (SPrim2 f n1 :: s)) =
+    Right (SReturn h (Num (f n1 n2)) IntVal s ** RetPrim2)
+progress (SReturn h (Num n) IntVal (SIsZero e2 e3 :: s)) with (decEq n 0)
+  progress (SReturn h (Num 0) IntVal (SIsZero e2 e3 :: s)) | Yes Refl =
+      Right (SEval h e2 s ** RetIsZeroZ)
+  progress (SReturn h (Num n) IntVal (SIsZero e2 e3 :: s)) | No neq =
+      Right (SEval h e3 s ** RetIsZeroS neq)
+progress (SReturn h (Abs t e1) ArrowVal (SApp e2 :: s)) =
+    Right (SEval h (Let e2 e1) s ** RetApp)
+progress (SReturn h (Abs t e) ArrowVal (SFix :: s)) =
+    Right (SEval h (Let (Fix (Abs t e)) e) s ** RetFix)
+progress (SReturn h (Constr tag xs) DataVal (SCase as :: s)) =
+    Right (SEval h (altEval tag as xs) s ** RetCase)
+progress (SReturn h (TyAbs e) ForallVal (STyApp t' Refl :: s)) =
+    Right (SEval h (tySubst t' e) s ** RetTyApp)
+progress (SReturn h (Fold e) FixVal (SUnfold Refl :: s)) =
+    Right (SEval h e s ** RetUnfold)
 
 partial export
 evaluate : (s : StackState t) -> (s' : StackState t ** (Iterate Eval s s', IsComplete s'))

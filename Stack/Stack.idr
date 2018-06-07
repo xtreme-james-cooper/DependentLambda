@@ -1,64 +1,46 @@
 module Stack.Stack
 
-import public Lambda.Lambda
+import public Lambda.LambdaOperations
 import public Utils.Heap
 
 %default total
 
 public export
-data SValue : Vect n (Ty tn) -> Ty tn -> Type where
-  IntVal : Int -> SValue env IntTy
-  ArrowVal : (t1 : Ty tn) -> Expr (t1 :: env) t2 -> SValue env (ArrowTy t1 t2)
-  DataVal : {ctrs : Vect m (n ** Vect n (Ty tn))} -> (tag : Fin m) ->
-      VarArgs env (snd (index tag ctrs)) -> SValue env (DataTy ctrs)
-  ForallVal : Expr (map (tyincr FZ) env) t -> SValue env (ForallTy t)
-  FixVal : Expr env (tsubst FZ (FixTy t) t) -> SValue env (FixTy t)
-
-export
-devalue : SValue env t -> Expr env t
-devalue (IntVal n) = Num n
-devalue (ArrowVal t1 e) = Abs t1 e
-devalue (DataVal tag xs) = Constr tag xs
-devalue (ForallVal e) = TyAbs e
-devalue (FixVal e) = Fold e
+data Frame : (henv : Vect k (Ty tn)) -> (t' : Ty tn) -> (t : Ty tn) -> Type where
+  SUpdate : (x : Fin k) -> index x henv = t -> Frame henv (index x henv) t
+  SPrim1 : (Int -> Int -> Int) -> Expr henv IntTy -> Frame henv IntTy IntTy
+  SPrim2 : (Int -> Int -> Int) -> Int -> Frame henv IntTy IntTy
+  SIsZero : Expr henv t -> Expr henv t -> Frame henv IntTy t
+  SApp : Expr henv t1 -> Frame henv (ArrowTy t1 t2) t2
+  SFix : Frame henv (ArrowTy t t) t
+  SCase : Alts henv ctrs t -> Frame henv (DataTy ctrs) t
+  STyApp : (t' : Ty tn) -> tt = tsubst FZ t' t -> Frame henv (ForallTy t) tt
+  SUnfold : tt = tsubst FZ (FixTy t) t -> Frame henv (FixTy t) tt
 
 public export
-data HeapEntry : Type where
-  HeapE : Vect n (Ty tn) -> Ty tn -> HeapEntry
-
-public export
-exprOfHeapType : HeapEntry -> Type
-exprOfHeapType (HeapE env t) = Expr env t
-
-public export
-SHeap : (k : Nat) -> HeapEnv k HeapEntry -> Type
-SHeap k h = Heap k h exprOfHeapType
-
-public export
-data Frame : HeapEnv m HeapEntry -> Vect n (Ty tn) -> Vect n' (Ty tn) -> Ty tn ->
-    Ty tn -> Type where
-  SUpdate : {h : HeapEnv m HeapEntry} -> (n : Nat) -> (lt : LT n m) ->
-      h n lt = HeapE env t -> Frame h env env t t
-  SPrim1 : (Int -> Int -> Int) -> Expr env IntTy -> Frame h env env IntTy IntTy
-  SPrim2 : (Int -> Int -> Int) -> Int -> Frame h env env IntTy IntTy
-  SIsZero : Expr env t -> Expr env t -> Frame h env env IntTy t
-  SApp : Expr env t1 -> Frame h env env (ArrowTy t1 t2) t2
-  SLet : (n : Nat) -> {h : HeapEnv m HeapEntry} ->
-      h n lt = HeapE env t1 -> Frame h (t1 :: env) env t2 t2
-  SFix : Frame h env env (ArrowTy t t) t
-  SCase : Alts env ctrs t -> Frame h env env (DataTy ctrs) t
-  STyApp : (t' : Ty tn) -> tt = tsubst FZ t' t -> Frame h env env (ForallTy t) tt
-  SUnfold : tt = tsubst FZ (FixTy t) t -> Frame h env env (FixTy t) tt
-
-public export
-data Stack : HeapEnv m HeapEntry -> Vect n (Ty tn) -> Ty tn -> Ty tn -> Type where
-  Nil : Stack h [] t t
-  (::) : Frame h env env' t1 t2 -> Stack h env' t2 t3 -> Stack h env t1 t3
+data Stack : (henv : Vect k (Ty tn)) -> (t' : Ty tn) -> (t : Ty tn) -> Type where
+  Nil : Stack henv t t
+  (::) : Frame henv t1 t2 -> Stack henv t2 t3 -> Stack henv t1 t3
 
 public export
 data StackState : Ty tn -> Type where
-  SEval : {env : Vect n (Ty tn)} -> {henv : HeapEnv m HeapEntry} -> Expr env t1 ->
-      Stack henv env t1 t2 -> Vect n (p ** LT p m) -> SHeap m henv -> StackState t2
-  SReturn : {env : Vect n (Ty tn)} -> {henv : HeapEnv m HeapEntry} ->
-      SValue env t1 -> Stack henv env t1 t2 -> Vect n (p ** LT p m) -> SHeap m henv ->
-          StackState t2
+  SEval : Heap k henv (Expr henv) -> Expr henv t1 -> Stack henv t1 t2 ->
+      StackState t2
+  SReturn : Heap k henv (Expr henv) -> (e : Expr henv t1) -> IsValue e ->
+      Stack henv t1 t2 -> StackState t2
+
+fIncr : (t3 : Ty tn) -> Frame henv t1 t2 -> Frame (t3 :: henv) t1 t2
+fIncr t3 (SUpdate x eq) = SUpdate (FS x) eq
+fIncr t3 (SPrim1 f e) = SPrim1 f (incr FZ t3 e)
+fIncr t3 (SPrim2 f n) = SPrim2 f n
+fIncr t3 (SIsZero e2 e3) = SIsZero (incr FZ t3 e2) (incr FZ t3 e3)
+fIncr t3 (SApp e2) = SApp (incr FZ t3 e2)
+fIncr t3 SFix = SFix
+fIncr t3 (SCase as) = SCase (incra FZ t3 as)
+fIncr t3 (STyApp t' eq) = STyApp t' eq
+fIncr t3 (SUnfold eq) = SUnfold eq
+
+export
+sIncr : (t3 : Ty tn) -> Stack henv t1 t2 -> Stack (t3 :: henv) t1 t2
+sIncr t3 [] = []
+sIncr t3 (f :: fs) = fIncr t3 f :: sIncr t3 fs
