@@ -6,7 +6,7 @@ import public Utils.BasicsHelper
 %default total
 
 export
-valNotVarHeaded : IsValue e -> Not (IsVarHeaded e ix)
+valNotVarHeaded : IsValue e b -> Not (IsVarHeaded e ix)
 valNotVarHeaded IntVal vh impossible
 valNotVarHeaded ArrowVal vh impossible
 valNotVarHeaded DataVal vh impossible
@@ -68,7 +68,7 @@ varHeadedSame (UnfoldVar vh1) (UnfoldVar vh2) with (varHeadedSame vh1 vh2)
   varHeadedSame (UnfoldVar vh1) (UnfoldVar vh1) | Refl = Refl
 
 export
-valNoEval : IsValue e -> Not (Eval e e')
+valNoEval : IsValue e b -> Not (Eval e e')
 valNoEval IntVal ev impossible
 valNoEval ArrowVal ev impossible
 valNoEval DataVal ev impossible
@@ -76,7 +76,7 @@ valNoEval ForallVal ev impossible
 valNoEval FixVal ev impossible
 valNoEval (LetVal v1 npr) (EvLet1 ev) = valNoEval v1 ev
 valNoEval (LetVal v1 npr) (EvLet2 vh ev) = valNotVarHeaded v1 vh
-valNoEval (LetVal v1 npr) (EvLet3 vh v2 npr') = valNotVarHeaded v1 vh
+valNoEval (LetVal v1 npr) (EvLet3 vh v2) = valNotVarHeaded v1 vh
 valNoEval (LetVal v1 npr) (EvLetLet vh v2 npr') = valNotVarHeaded v1 vh
 valNoEval (LetVal v1 npr) (EvLetGC v2 npr') = void (eqFlip' npr' npr)
 
@@ -123,13 +123,13 @@ varHeadedNoEval (AppVar (LetVarL vh2 vh1)) (EvAppLet v npr) = valNotVarHeaded v 
 varHeadedNoEval (AppVar (LetVarR vh2)) (EvAppLet v npr) = valNotVarHeaded v vh2
 varHeadedNoEval (LetVarL vh2 vh1) (EvLet1 ev) = varHeadedNoEval vh2 ev
 varHeadedNoEval (LetVarL vh2 vh1) (EvLet2 vh ev) = varHeadedNoEval vh1 ev
-varHeadedNoEval (LetVarL vh2 vh1) (EvLet3 vh v npr) = valNotVarHeaded v vh1
+varHeadedNoEval (LetVarL vh2 vh1) (EvLet3 vh v) = valNotVarHeaded v vh1
 varHeadedNoEval (LetVarL vh2 (LetVarL vh12 vh11)) (EvLetLet vh v npr) = valNotVarHeaded v vh12
 varHeadedNoEval (LetVarL vh2 (LetVarR vh12)) (EvLetLet vh v npr) = valNotVarHeaded v vh12
 varHeadedNoEval (LetVarL vh2 vh1) (EvLetGC v2 nfv) = void (eqFlip' nfv (varHeadedMustBeFree vh2))
 varHeadedNoEval (LetVarR vh2) (EvLet1 ev) = varHeadedNoEval vh2 ev
 varHeadedNoEval (LetVarR vh2) (EvLet2 vh ev) = varHeadedDiff vh vh2
-varHeadedNoEval (LetVarR vh2) (EvLet3 vh v npr) = varHeadedDiff vh vh2
+varHeadedNoEval (LetVarR vh2) (EvLet3 vh v) = varHeadedDiff vh vh2
 varHeadedNoEval (LetVarR vh2) (EvLetLet vh v npr) = varHeadedDiff vh vh2
 varHeadedNoEval (LetVarR vh2) (EvLetGC v2 nfv) = valNotVarHeaded v2 vh2
 varHeadedNoEval (FixVar vh) (EvFix1 ev) = varHeadedNoEval vh ev

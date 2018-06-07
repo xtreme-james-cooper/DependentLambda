@@ -26,7 +26,7 @@ public export
 data StackState : Ty tn -> Type where
   SEval : Heap k henv (Expr henv) -> Expr henv t1 -> Stack henv t1 t2 ->
       StackState t2
-  SReturn : Heap k henv (Expr henv) -> (e : Expr henv t1) -> IsValue e ->
+  SReturn : Heap k henv (Expr henv) -> (e : Expr henv t1) -> IsValue e True ->
       Stack henv t1 t2 -> StackState t2
 
 fIncr : (t3 : Ty tn) -> Frame henv t1 t2 -> Frame (t3 :: henv) t1 t2

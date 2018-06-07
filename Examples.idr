@@ -1,6 +1,7 @@
 module Examples
 
 import Lambda.Evaluation.Determinism
+import Stack.Evaluation.Determinism
 import Named.Unname
 
 %default total

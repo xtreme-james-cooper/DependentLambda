@@ -8,7 +8,7 @@ import public Utils.Iterate
 public export
 data Eval : StackState t -> StackState t -> Type where
   EvVar : Eval (SEval h (Var ix) s) (SEval h (hLookup h (finFromIndex ix))
-      (SUpdate (finFromIndex ix) eq :: s))
+      (SUpdate (finFromIndex ix) (indexOfIndex (finFromIndex ix) ix Refl) :: s))
   EvNum : Eval (SEval h (Num n) s) (SReturn h (Num n) IntVal s)
   EvPrim : Eval (SEval h (Prim f e1 e2) s) (SEval h e1 (SPrim1 f e2 :: s))
   EvIsZero : Eval (SEval h (IsZero e1 e2 e3) s) (SEval h e1 (SIsZero e2 e3 :: s))
@@ -39,8 +39,8 @@ data Eval : StackState t -> StackState t -> Type where
   RetFix : Eval (SReturn h (Abs t e) ArrowVal (SFix :: s))
       (SEval h (Let (Fix (Abs t e)) e) s)
   RetCase : Eval (SReturn h (Constr tag xs) DataVal (SCase as :: s))
-      (SEval h (altEval tag as es) s)
-  RetTyApp : Eval (SReturn h (TyAbs e) ForallVal (STyApp t' eq :: s))
+      (SEval h (altEval tag as xs) s)
+  RetTyApp : Eval (SReturn h (TyAbs e) ForallVal (STyApp t eq :: s))
       (SEval h (tySubst t e) s)
   RetUnfold : Eval (SReturn h (Fold e) FixVal (SUnfold eq :: s)) (SEval h e s)
 
@@ -75,7 +75,9 @@ progress (SEval h (TyAbs e) s) =
 progress (SEval h (Fold e) s) = Right (SReturn h (Fold e) FixVal s ** EvFold)
 progress (SEval h (Unfold e eq) s) =
     Right (SEval h e (SUnfold eq :: s) ** EvUnfold)
+
 progress (SReturn h e v []) = Left Complete
+
 progress (SReturn h e v (SUpdate n Refl :: s)) =
     Right (SReturn (hUpdate h n e) e v s ** RetUpdate)
 progress (SReturn h (Num n1) IntVal (SPrim1 f e2 :: s)) =
@@ -83,8 +85,8 @@ progress (SReturn h (Num n1) IntVal (SPrim1 f e2 :: s)) =
 progress (SReturn h (Num n2) IntVal (SPrim2 f n1 :: s)) =
     Right (SReturn h (Num (f n1 n2)) IntVal s ** RetPrim2)
 progress (SReturn h (Num n) IntVal (SIsZero e2 e3 :: s)) with (decEq n 0)
-  progress (SReturn h (Num 0) IntVal (SIsZero e2 e3 :: s)) | Yes Refl =
-      Right (SEval h e2 s ** RetIsZeroZ)
+  progress (SReturn h (Num n) IntVal (SIsZero e2 e3 :: s)) | Yes eq =
+      rewrite eq in Right (SEval h e2 s ** RetIsZeroZ)
   progress (SReturn h (Num n) IntVal (SIsZero e2 e3 :: s)) | No neq =
       Right (SEval h e3 s ** RetIsZeroS neq)
 progress (SReturn h (Abs t e1) ArrowVal (SApp e2 :: s)) =
